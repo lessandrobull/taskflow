@@ -7,12 +7,15 @@ import ContextsView from './views/ContextsView';
 import NotesView from './views/NotesView';
 import BottomNav from './components/BottomNav';
 import QuickInput from './components/QuickInput';
+import { THEME } from './colors';
 
 export default function App() {
   const [abaAtiva, setAbaAtiva] = useState('hoje');
   const {
     tarefas,
     toggleConcluir,
+    removerTarefa,
+    editarTarefa,
     moverParaCima,
     moverParaBaixo,
     alternarPrioridade,
@@ -30,11 +33,10 @@ export default function App() {
   } = useNotes();
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans">
-      {/* Topo Fixo com Título e Input Inteligente */}
-      <header className="sticky top-0 z-10 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/80 px-4 py-3">
+    <div className={`h-dvh flex flex-col font-sans overflow-hidden ${THEME.app.bg} ${THEME.app.text}`}>
+      <header className={`sticky top-0 z-10 border-b px-4 py-2.5 shrink-0 ${THEME.app.headerBg} ${THEME.app.headerBorder}`}>
         <div className="max-w-md mx-auto flex items-center gap-3">
-          <span className="font-semibold text-sm tracking-tight text-zinc-100">
+          <span className={`font-bold text-sm tracking-tight ${THEME.app.headerTitle}`}>
             {abaAtiva === 'hoje' && 'Hoje'}
             {abaAtiva === 'fila' && 'Fila Global'}
             {abaAtiva === 'contextos' && 'Contextos'}
@@ -44,8 +46,11 @@ export default function App() {
         </div>
       </header>
 
-      {/* Conteúdo Central */}
-      <main className="flex-1 max-w-md w-full mx-auto p-4">
+      <main
+        className={`flex-1 max-w-md w-full mx-auto px-4 pt-2 pb-16 flex flex-col min-h-0 ${
+          abaAtiva === 'hoje' ? 'overflow-hidden' : 'overflow-y-auto'
+        }`}
+      >
         {abaAtiva === 'hoje' && (
           <TodayView tarefas={tarefas} toggleConcluir={toggleConcluir} />
         )}
@@ -61,9 +66,10 @@ export default function App() {
         {abaAtiva === 'contextos' && (
           <ContextsView
             tarefas={tarefas}
-            toggleConcluir={toggleConcluir}
             adicionarTarefa={adicionarTarefa}
             alternarPrioridade={alternarPrioridade}
+            editarTarefa={editarTarefa}
+            removerTarefa={removerTarefa}
           />
         )}
         {abaAtiva === 'notas' && (
@@ -80,7 +86,6 @@ export default function App() {
         )}
       </main>
 
-      {/* Rodapé Fixo */}
       <BottomNav abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
     </div>
   );

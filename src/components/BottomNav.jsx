@@ -1,34 +1,34 @@
 import React from 'react';
-import { Lightning, Queue, Folder, NoteBlank } from '@phosphor-icons/react';
+import { CalendarBlank, ListNumbers, TreeStructure, NotePencil } from '@phosphor-icons/react';
+import { THEME } from '../colors';
 
 export default function BottomNav({ abaAtiva, setAbaAtiva }) {
-  const botoes = [
-    { id: 'hoje', label: 'Hoje', icon: Lightning },
-    { id: 'fila', label: 'Fila Global', icon: Queue },
-    { id: 'contextos', label: 'Contextos', icon: Folder },
-    { id: 'notas', label: 'Notas', icon: NoteBlank },
+  const abas = [
+    { id: 'hoje', label: 'Hoje', Icone: CalendarBlank },
+    { id: 'fila', label: 'Fila Global', Icone: ListNumbers },
+    { id: 'contextos', label: 'Contextos', Icone: TreeStructure },
+    { id: 'notas', label: 'Notas', Icone: NotePencil },
   ];
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 bg-zinc-950/90 backdrop-blur-md border-t border-zinc-800/80 px-4 py-2">
-      <div className="max-w-md mx-auto flex items-center justify-around">
-        {botoes.map((btn) => {
-          const Icon = btn.icon;
-          const ativo = abaAtiva === btn.id;
+    <nav className={`fixed bottom-0 left-0 right-0 z-20 border-t ${THEME.nav.bg} ${THEME.nav.border}`}>
+      <div className="max-w-md mx-auto flex items-center justify-around py-2 px-3">
+        {abas.map(({ id, label, Icone }) => {
+          const ativo = abaAtiva === id;
           return (
             <button
-              key={btn.id}
-              onClick={() => setAbaAtiva(btn.id)}
-              className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-colors ${
-                ativo ? 'text-zinc-100 font-medium' : 'text-zinc-500 hover:text-zinc-300'
+              key={id}
+              onClick={() => setAbaAtiva(id)}
+              className={`flex flex-col items-center gap-1 transition-colors ${
+                ativo ? THEME.nav.itemAtivo : THEME.nav.itemInativo
               }`}
             >
-              <Icon size={20} weight={ativo ? 'fill' : 'regular'} />
-              <span className="text-[11px] tracking-wide">{btn.label}</span>
+              <Icone size={20} weight={ativo ? 'bold' : 'regular'} />
+              <span className="text-[10px] tracking-tight">{label}</span>
             </button>
           );
         })}
       </div>
-    </footer>
+    </nav>
   );
 }

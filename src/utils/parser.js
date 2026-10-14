@@ -1,71 +1,248 @@
 import { TIPOS_TAREFA, PRIORIDADES } from '../types';
 
-// Dicionário de ícones automáticos por palavras-chave
-const MAPA_ICONES = [
-    { palavras: ['pintar', 'tinta', 'parede', 'verniz', 'lixar'], icone: 'PaintBrush' },
-    { palavras: ['telhado', 'telha', 'manta', 'obra', 'cimento', 'furadeira'], icone: 'Hammer' },
-    { palavras: ['conserto', 'trocar', 'instalar', 'prateleira', 'chuveiro'], icone: 'Wrench' },
-    { palavras: ['dentista', 'dente'], icone: 'Tooth' },
-    { palavras: ['medico', 'consulta', 'remedio', 'saude', 'exame'], icone: 'Heartbeat' },
-    { palavras: ['aula', 'aluno', 'ingles', 'mari', 'amanda', 'estefany'], icone: 'ChalkboardTeacher' },
-    { palavras: ['quiz', 'quizhub', 'codigo', 'bug', 'app', 'hos', 'react', 'vite'], icone: 'Code' },
-    { palavras: ['lixo', 'descarte'], icone: 'Trash' },
-    { palavras: ['limpar', 'limpeza', 'pano', 'aspirador', 'lavar'], icone: 'Broom' },
-    { palavras: ['comprar', 'mercado', 'loja', 'preco', 'pedir'], icone: 'ShoppingCart' },
-    { palavras: ['treino', 'corrida', 'correr', 'academia', 'musculacao'], icone: 'PersonSimpleRun' },
-    { palavras: ['estudo', 'ler', 'livro', 'resumo', 'filosofia'], icone: 'BookOpen' },
-    { palavras: ['musica', 'gaita', 'blues', 'pedal', 'guitarra'], icone: 'MusicNote' },
-];
+const MAPA_ICONES = {
+  // Aulas e Ensino
+  aula: 'ChalkboardTeacher',
+  aluno: 'ChalkboardTeacher',
+  ensino: 'ChalkboardTeacher',
+  class: 'ChalkboardTeacher',
+
+  // Casa, Limpeza e Manutenção
+  limpeza: 'Broom',
+  limpar: 'Broom',
+  pano: 'Broom',
+  banheiro: 'Broom',
+  quintal: 'Broom',
+  lixo: 'Trash',
+  casa: 'House',
+  obra: 'Hammer',
+  conserto: 'Wrench',
+  ferramenta: 'Wrench',
+  torneira: 'Drop',
+
+  // Saúde, Exercício e Rotina
+  treino: 'Barbell',
+  academia: 'Barbell',
+  corrida: 'PersonSimpleRun',
+  correr: 'PersonSimpleRun',
+  agua: 'Drop',
+  remédio: 'Pill',
+  remedio: 'Pill',
+  meditar: 'Heartbeat',
+
+  // Trabalho, Código e Estudos
+  estudo: 'BookOpen',
+  ler: 'BookOpen',
+  livro: 'BookOpen',
+  codigo: 'Code',
+  bug: 'Code',
+  deploy: 'CloudArrowUp',
+  reuniao: 'UsersThree',
+};
+
+const DIAS_SEMANA = {
+  domingo: 0,
+  segunda: 1,
+  'segunda-feira': 1,
+  terca: 2,
+  terça: 2,
+  'terca-feira': 2,
+  'terça-feira': 2,
+  quarta: 3,
+  'quarta-feira': 3,
+  quinta: 4,
+  'quinta-feira': 4,
+  sexta: 5,
+  'sexta-feira': 5,
+  sabado: 6,
+  sábado: 6,
+};
+
+const NUMEROS_EXTENSO = {
+  um: 1,
+  uma: 1,
+  dois: 2,
+  duas: 2,
+  tres: 3,
+  três: 3,
+  quatro: 4,
+  cinco: 5,
+  seis: 6,
+  sete: 7,
+  oito: 8,
+  nove: 9,
+  dez: 10,
+  quinze: 15,
+  vinte: 20,
+  trinta: 30,
+};
+
+function formatarDataISO(data) {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const dia = String(data.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
+function calcularProximoDiaSemana(diaAlvo) {
+  const hoje = new Date();
+  const diaAtual = hoje.getDay();
+  let diff = diaAlvo - diaAtual;
+  if (diff < 0) diff += 7;
+  const alvo = new Date(hoje);
+  alvo.setDate(hoje.getDate() + diff);
+  return formatarDataISO(alvo);
+}
 
 export function processarInputRapido(textoBruto) {
-    if (!textoBruto || !textoBruto.trim()) return null;
+  if (!textoBruto || !textoBruto.trim()) return null;
 
-    let texto = textoBruto.trim();
-    let horario = null;
-    let contexto = 'geral';
-    let tipo = TIPOS_TAREFA.FOCO;
+  let texto = textoBruto.trim();
+  let contexto = 'geral';
+  let horario = null;
+  let tipo = TIPOS_TAREFA.FOCO;
+  let cadencia = null;
+  let proximaData = null;
 
-    // 1. Detecta horário com @ (ex: @14:00 ou @14h)
-    const regexHorario = /@(\d{1,2}(?::\d{2}|h\d{0,2}))/i;
-    const matchHorario = texto.match(regexHorario);
-    if (matchHorario) {
-        let h = matchHorario[1].toLowerCase().replace('h', ':');
-        if (!h.includes(':')) h = `${h}:00`;
-        if (h.endsWith(':')) h = `${h}00`;
-        horario = h;
-        tipo = TIPOS_TAREFA.AGENDADO;
-        texto = texto.replace(matchHorario[0], '').trim();
+  // 1. Extração de Horário (@14:30 ou @8h)
+  const regexHorario = /@(\d{1,2}(?::\d{2}|h\d{2}|h)?)/i;
+  const matchHorario = texto.match(regexHorario);
+  if (matchHorario) {
+    let raw = matchHorario[1].toLowerCase().replace('h', ':');
+    if (!raw.includes(':')) raw += ':00';
+    const [h, m] = raw.split(':');
+    horario = `${String(h).padStart(2, '0')}:${String(m || '00').padStart(2, '0')}`;
+    texto = texto.replace(matchHorario[0], '').trim();
+    tipo = TIPOS_TAREFA.AGENDADO;
+  }
+
+  // 2. Extração de Contexto Hierárquico (#casa/manutencao)
+  const regexContexto = /#([\w\d\s\-_/]+)(?:\s|$)/i;
+  const matchContexto = texto.match(regexContexto);
+  if (matchContexto) {
+    contexto = matchContexto[1].trim().toLowerCase();
+    texto = texto.replace(matchContexto[0], '').trim();
+  }
+
+  // 3. Extração de Ponto de Início ("iniciando no sábado", "a partir de sábado", "começando sábado")
+  const regexInicio =
+    /\b(?:iniciando(?:\s+no|\s+na)?|a\s+partir\s+de|come[çc]ando(?:\s+no|\s+na)?)\s+(domingo|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[aá]bado)\b/i;
+  const matchInicio = texto.match(regexInicio);
+  if (matchInicio) {
+    const diaNome = matchInicio[1].toLowerCase();
+    const diaAlvo = DIAS_SEMANA[diaNome];
+    if (diaAlvo !== undefined) {
+      proximaData = calcularProximoDiaSemana(diaAlvo);
     }
+    texto = texto.replace(matchInicio[0], '').trim();
+  }
 
-    // 2. Detecta contexto hierárquico com # (suporta espaços até achar @ ou fim da linha)
-    // Aceita #[casa/obras externas/pintura] ou #casa/obras externas/pintura
-    const regexContexto = /#(?:\[([^\]]+)\]|([^\n@]+))/;
-    const matchContexto = texto.match(regexContexto);
-    if (matchContexto) {
-        contexto = (matchContexto[1] || matchContexto[2]).trim().toLowerCase();
-        texto = texto.replace(matchContexto[0], '').trim();
+  // 4. Reconhecimento de Rotinas por Palavras-Chave
+  let ehRotina = false;
+  let intervaloDias = 7;
+
+  // 4.1 Advérbios diretos
+  const regexAdverbios = /\b(diariamente|semanalmente|quinzenalmente|mensalmente|anualmente)\b/i;
+  const matchAdv = texto.match(regexAdverbios);
+  if (matchAdv) {
+    ehRotina = true;
+    const adv = matchAdv[1].toLowerCase();
+    if (adv === 'diariamente') intervaloDias = 1;
+    if (adv === 'semanalmente') intervaloDias = 7;
+    if (adv === 'quinzenalmente') intervaloDias = 15;
+    if (adv === 'mensalmente') intervaloDias = 30;
+    if (adv === 'anualmente') intervaloDias = 365;
+    texto = texto.replace(matchAdv[0], '').trim();
+  }
+
+  // 4.2 "A cada X [dias/semanas/meses]"
+  const regexACada =
+    /\ba\s+cada\s+(\d+|um|uma|dois|duas|tr[êe]s|quatro|cinco|seis|sete|oito|nove|dez|quinze|vinte|trinta)\s+(dias?|semanas?|m[êe]ses?|anos?)\b/i;
+  const matchACada = texto.match(regexACada);
+  if (!ehRotina && matchACada) {
+    ehRotina = true;
+    const qtdRaw = matchACada[1].toLowerCase();
+    const unidade = matchACada[2].toLowerCase();
+    const qtd = NUMEROS_EXTENSO[qtdRaw] || parseInt(qtdRaw, 10) || 1;
+
+    if (unidade.startsWith('dia')) intervaloDias = qtd;
+    else if (unidade.startsWith('semana')) intervaloDias = qtd * 7;
+    else if (unidade.startsWith('m')) intervaloDias = qtd * 30;
+    else if (unidade.startsWith('ano')) intervaloDias = qtd * 365;
+
+    texto = texto.replace(matchACada[0], '').trim();
+  }
+
+  // 4.3 "X vez(es) por [tempo]" ou "Xx por [tempo]" (ex: 1x por semana, 2 vezes por mês, 1x na semana)
+  const regexVezPor =
+    /\b(\d+|um|uma|dois|duas|tr[êe]s|quatro|cinco)\s*(?:x|vez(?:es)?)\s+(?:por|na|no|ao|à)\s+(dia|semana|m[êe]s|mes|ano)\b/i;
+  const matchVezPor = texto.match(regexVezPor);
+  if (!ehRotina && matchVezPor) {
+    ehRotina = true;
+    const vezesRaw = matchVezPor[1].toLowerCase();
+    const unidade = matchVezPor[2].toLowerCase();
+    const vezes = NUMEROS_EXTENSO[vezesRaw] || parseInt(vezesRaw, 10) || 1;
+
+    if (unidade === 'dia') intervaloDias = 1;
+    else if (unidade === 'semana') intervaloDias = Math.max(1, Math.round(7 / vezes));
+    else if (unidade === 'mês' || unidade === 'mes') intervaloDias = Math.max(1, Math.round(30 / vezes));
+    else if (unidade === 'ano') intervaloDias = Math.max(1, Math.round(365 / vezes));
+
+    texto = texto.replace(matchVezPor[0], '').trim();
+  }
+
+  // 4.4 "todo(s) (os)? [dia|semana|mês|dia_semana]" ou "toda(s) (as)? [semana|dia_semana]"
+  const regexTodo =
+    /\b(?:todos?\s+os|todas?\s+as|todo|toda)\s+(dia|semana|m[êe]s|domingo|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[aá]bado)\b/i;
+  const matchTodo = texto.match(regexTodo);
+  if (!ehRotina && matchTodo) {
+    ehRotina = true;
+    const alvo = matchTodo[1].toLowerCase();
+    if (alvo === 'dia') {
+      intervaloDias = 1;
+    } else if (alvo === 'semana') {
+      intervaloDias = 7;
+    } else if (alvo === 'mês' || alvo === 'mes') {
+      intervaloDias = 30;
+    } else {
+      intervaloDias = 7;
+      if (!proximaData && DIAS_SEMANA[alvo] !== undefined) {
+        proximaData = calcularProximoDiaSemana(DIAS_SEMANA[alvo]);
+      }
     }
+    texto = texto.replace(matchTodo[0], '').trim();
+  }
 
-    // 3. Título limpo (somente a ação)
-    const tituloLimpo = texto.replace(/\s+/g, ' ').trim();
-
-    // 4. Identificação do ícone por contexto ou palavras da ação
-    let iconeEncontrado = 'Circle';
-    const termoParaAnalise = `${tituloLimpo} ${contexto}`.toLowerCase();
-
-    for (const regra of MAPA_ICONES) {
-        if (regra.palavras.some((p) => termoParaAnalise.includes(p))) {
-            iconeEncontrado = regra.icone;
-            break;
-        }
+  if (ehRotina) {
+    tipo = TIPOS_TAREFA.CADENCIA;
+    if (!proximaData) {
+      proximaData = formatarDataISO(new Date());
     }
-
-    return {
-        titulo: tituloLimpo,
-        icone: iconeEncontrado,
-        contexto: contexto,
-        tipo: tipo,
-        horario: horario,
-        prioridade: PRIORIDADES.P2,
+    cadencia = {
+      intervaloDias,
     };
+  }
+
+  // 5. Seleção de Ícone Dinâmico
+  let icone = 'Circle';
+  const textoMinusculo = texto.toLowerCase();
+  for (const [chave, iconeNome] of Object.entries(MAPA_ICONES)) {
+    if (textoMinusculo.includes(chave)) {
+      icone = iconeNome;
+      break;
+    }
+  }
+
+  const tituloLimpo = texto.replace(/\s{2,}/g, ' ').replace(/^[-–—,]\s*/, '').trim();
+
+  return {
+    titulo: tituloLimpo,
+    icone,
+    contexto,
+    tipo,
+    horario,
+    cadencia,
+    proximaData,
+    prioridade: PRIORIDADES.P2,
+  };
 }
