@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { DADOS_INICIAIS, TIPOS_TAREFA, PRIORIDADES } from './types';
 import { buscarEventosHoje } from './services/calendar';
+import { supabase } from './services/supabase';
 
 const STORAGE_KEY = 'taskflow_tarefas_v1';
 
@@ -23,6 +24,7 @@ export function useTasks() {
 
   const [sincronizandoAgenda, setSincronizandoAgenda] = useState(false);
 
+  // Mantém backup no localStorage
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(tarefas));
@@ -30,6 +32,58 @@ export function useTasks() {
       console.error('Falha ao gravar no localStorage:', err);
     }
   }, [tarefas]);
+
+  // Carrega dados iniciais do Supabase e assina mudanças em tempo real
+  useEffect(() => {
+    async function carregarDoSupabase() {
+      const { data, error } = await supabase.from('tarefas').select('*');
+      if (!error && data && data.length > 0) {
+        setTarefas(data);
+      } else if (!error && data && data.length === 0) {
+        // Se a tabela estiver vazia, sobe os dados locais para o banco
+        const locais = (() => {
+          try {
+            const s = localStorage.getItem(STORAGE_KEY);
+            return s ? JSON.parse(s) : DADOS_INICIAIS;
+          } catch {
+            return DADOS_INICIAIS;
+          }
+        })();
+        if (locais.length > 0) {
+          await supabase.from('tarefas').upsert(locais);
+        }
+      }
+    }
+
+    carregarDoSupabase();
+
+    // Inscrição em tempo real (Realtime Channel)
+    const canal = supabase
+      .channel('tarefas-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tarefas' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setTarefas((prev) => {
+              if (prev.some((t) => t.id === payload.new.id)) return prev;
+              return [...prev, payload.new];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            setTarefas((prev) =>
+              prev.map((t) => (t.id === payload.new.id ? payload.new : t))
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setTarefas((prev) => prev.filter((t) => t.id === payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(canal);
+    };
+  }, []);
 
   const sincronizarAgenda = async () => {
     setSincronizandoAgenda(true);
@@ -59,6 +113,10 @@ export function useTasks() {
               };
             });
 
+          if (novosItens.length > 0) {
+            supabase.from('tarefas').upsert(novosItens).catch(console.error);
+          }
+
           return [...novosItens, ...prev];
         });
       }
@@ -72,43 +130,54 @@ export function useTasks() {
   }, []);
 
   const toggleConcluir = (id) => {
+    const itemAtual = tarefas.find((t) => t.id === id);
+    if (!itemAtual) return;
+
+    let atualizacao = {};
+
+    if (itemAtual.tipo === TIPOS_TAREFA.CADENCIA) {
+      const intervalo = itemAtual.cadencia?.intervaloDias || 7;
+      const proxima = new Date();
+      proxima.setDate(proxima.getDate() + intervalo);
+
+      atualizacao = {
+        concluido: false,
+        proximaData: formatarDataISO(proxima),
+        concluidoEm: new Date().toISOString(),
+      };
+    } else {
+      const novoConcluido = !itemAtual.concluido;
+      atualizacao = {
+        concluido: novoConcluido,
+        concluidoEm: novoConcluido ? new Date().toISOString() : null,
+      };
+    }
+
+    const tarefaAtualizada = { ...itemAtual, ...atualizacao };
+
     setTarefas((prev) =>
-      prev.map((t) => {
-        if (t.id !== id) return t;
-
-        // Se for Rotina: ao concluir, recalcula o próximo ciclo e reseta para a data futura
-        if (t.tipo === TIPOS_TAREFA.CADENCIA) {
-          const intervalo = t.cadencia?.intervaloDias || 7;
-          const proxima = new Date();
-          proxima.setDate(proxima.getDate() + intervalo);
-
-          return {
-            ...t,
-            concluido: false,
-            proximaData: formatarDataISO(proxima),
-            concluidoEm: new Date().toISOString(),
-          };
-        }
-
-        // Tarefas de Foco normais
-        const novoConcluido = !t.concluido;
-        return {
-          ...t,
-          concluido: novoConcluido,
-          concluidoEm: novoConcluido ? new Date().toISOString() : null,
-        };
-      })
+      prev.map((t) => (t.id === id ? tarefaAtualizada : t))
     );
+
+    supabase.from('tarefas').upsert(tarefaAtualizada).catch(console.error);
   };
 
   const removerTarefa = (id) => {
     setTarefas((prev) => prev.filter((t) => t.id !== id));
+    supabase.from('tarefas').delete().eq('id', id).catch(console.error);
   };
 
   const editarTarefa = (id, novosDados) => {
+    const itemAtual = tarefas.find((t) => t.id === id);
+    if (!itemAtual) return;
+
+    const tarefaAtualizada = { ...itemAtual, ...novosDados };
+
     setTarefas((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...novosDados } : t))
+      prev.map((t) => (t.id === id ? tarefaAtualizada : t))
     );
+
+    supabase.from('tarefas').upsert(tarefaAtualizada).catch(console.error);
   };
 
   const moverParaCima = (id) => {
@@ -122,13 +191,18 @@ export function useTasks() {
     const itemAtual = fila[index];
     const itemAcima = fila[index - 1];
 
+    const atual1 = { ...itemAtual, ordemFila: itemAcima.ordemFila };
+    const atual2 = { ...itemAcima, ordemFila: itemAtual.ordemFila };
+
     setTarefas((prev) =>
       prev.map((t) => {
-        if (t.id === itemAtual.id) return { ...t, ordemFila: itemAcima.ordemFila };
-        if (t.id === itemAcima.id) return { ...t, ordemFila: itemAtual.ordemFila };
+        if (t.id === itemAtual.id) return atual1;
+        if (t.id === itemAcima.id) return atual2;
         return t;
       })
     );
+
+    supabase.from('tarefas').upsert([atual1, atual2]).catch(console.error);
   };
 
   const moverParaBaixo = (id) => {
@@ -142,13 +216,18 @@ export function useTasks() {
     const itemAtual = fila[index];
     const itemAbaixo = fila[index + 1];
 
+    const atual1 = { ...itemAtual, ordemFila: itemAbaixo.ordemFila };
+    const atual2 = { ...itemAbaixo, ordemFila: itemAtual.ordemFila };
+
     setTarefas((prev) =>
       prev.map((t) => {
-        if (t.id === itemAtual.id) return { ...t, ordemFila: itemAbaixo.ordemFila };
-        if (t.id === itemAbaixo.id) return { ...t, ordemFila: itemAtual.ordemFila };
+        if (t.id === itemAtual.id) return atual1;
+        if (t.id === itemAbaixo.id) return atual2;
         return t;
       })
     );
+
+    supabase.from('tarefas').upsert([atual1, atual2]).catch(console.error);
   };
 
   const alternarPrioridade = (id) => {
@@ -158,11 +237,19 @@ export function useTasks() {
       [PRIORIDADES.P3]: PRIORIDADES.P1,
     };
 
+    const itemAtual = tarefas.find((t) => t.id === id);
+    if (!itemAtual) return;
+
+    const tarefaAtualizada = {
+      ...itemAtual,
+      prioridade: ciclo[itemAtual.prioridade] || PRIORIDADES.P2,
+    };
+
     setTarefas((prev) =>
-      prev.map((t) =>
-        t.id === id ? { ...t, prioridade: ciclo[t.prioridade] || PRIORIDADES.P2 } : t
-      )
+      prev.map((t) => (t.id === id ? tarefaAtualizada : t))
     );
+
+    supabase.from('tarefas').upsert(tarefaAtualizada).catch(console.error);
   };
 
   const adicionarTarefa = ({
@@ -183,7 +270,9 @@ export function useTasks() {
       tipo,
       horario,
       cadencia,
-      proximaData: proximaData || (tipo === TIPOS_TAREFA.CADENCIA ? formatarDataISO(new Date()) : null),
+      proximaData:
+        proximaData ||
+        (tipo === TIPOS_TAREFA.CADENCIA ? formatarDataISO(new Date()) : null),
       prioridade,
       ordemFila: tarefas.filter((t) => t.tipo === TIPOS_TAREFA.FOCO).length + 1,
       concluido: false,
@@ -191,6 +280,7 @@ export function useTasks() {
     };
 
     setTarefas((prev) => [...prev, nova]);
+    supabase.from('tarefas').insert(nova).catch(console.error);
   };
 
   return {
