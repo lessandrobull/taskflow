@@ -11,8 +11,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
+      workbox: {
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // Eleva o limite para 6 MB
+      },
       devOptions: {
-        enabled: true, // Habilita o PWA e o Manifesto no npm run dev
+        enabled: true,
       },
       manifest: {
         name: 'TaskFlow',
