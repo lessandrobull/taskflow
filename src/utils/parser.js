@@ -115,8 +115,8 @@ export function processarInputRapido(textoBruto) {
   let cadencia = null;
   let proximaData = null;
 
-  // 1. Extração de Horário (@14h, às 14h, as 14:30)
-  const regexHorario = /(?:@|(?:^|\s)[àa]s\s*)(\d{1,2}(?::\d{2}|h\d{2}|h)?)/i;
+  // 1. Extração de Horário (@14h, às 23h, as 23h, @14:30) com escape unicode para crase
+  const regexHorario = /(?:@|(?:\s|^)[a\u00e0\u00e1]s\s*)(\d{1,2}(?::\d{2}|h\d{2}|h)?)/i;
   const matchHorario = texto.match(regexHorario);
   if (matchHorario) {
     let raw = matchHorario[1].toLowerCase().replace('h', ':');
@@ -145,7 +145,7 @@ export function processarInputRapido(textoBruto) {
     }
   }
 
-  // 3. Extração de Contexto Unicode (#agenda, #francês, #casa/jardim)
+  // 3. Extração de Contexto Unicode (#agenda, #casa/jardim)
   const regexContexto = /#([\p{L}\p{N}\s\-_/]+)(?:\s|$)/u;
   const matchContexto = texto.match(regexContexto);
   if (matchContexto) {
@@ -157,7 +157,7 @@ export function processarInputRapido(textoBruto) {
     tipo = TIPOS_TAREFA.AGENDADO;
   }
 
-  // 4. Reconhecimento de Ponto de Início por dia da semana
+  // 4. Reconhecimento de Início por dia da semana
   const regexInicio =
     /\b(?:iniciando(?:\s+no|\s+na)?|a\s+partir\s+de|come[çc]ando(?:\s+no|\s+na)?)\s+(domingo|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[aá]bado)\b/i;
   const matchInicio = texto.match(regexInicio);
@@ -242,17 +242,18 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchTodo[0], '').trim();
   }
 
+  // Classificação final: Rotina (se tem frequência) vs Agenda (se tem horário e não tem frequência)
   if (ehRotina) {
     tipo = TIPOS_TAREFA.CADENCIA;
     if (!proximaData) {
       proximaData = formatarDataISO(new Date());
     }
     cadencia = { intervaloDias };
-  }
-
-  // REGRA: Se tem horário e não é rotina periódica, e nenhum contexto foi explicitado (#), vai direto para 'agenda'
-  if (!ehRotina && tipo === TIPOS_TAREFA.AGENDADO && contexto === 'geral') {
-    contexto = 'agenda';
+  } else if (horario) {
+    tipo = TIPOS_TAREFA.AGENDADO;
+    if (contexto === 'geral') {
+      contexto = 'agenda';
+    }
   }
 
   // 6. Seleção de Ícone

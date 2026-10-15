@@ -72,7 +72,7 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
     })
     .sort((a, b) => (a.ordemFila || 0) - (b.ordemFila || 0));
 
-  // 3. Foco: estritamente 3 tarefas no total (1 principal + 2 no radar)
+  // 3. Foco: 1 principal + 2 no radar (total 3)
   const filaFoco = tarefas
     .filter((t) => t.tipo === TIPOS_TAREFA.FOCO && !t.concluido)
     .sort((a, b) => (a.ordemFila || 0) - (b.ordemFila || 0));
@@ -94,11 +94,11 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
         </div>
 
         {agendadosTarefas.length > 0 ? (
-          <div className="h-[158px] lg:h-full lg:flex-1 overflow-y-auto space-y-2 no-scrollbar pr-0.5">
+          <div className="h-[154px] lg:h-full lg:flex-1 overflow-y-auto space-y-2 no-scrollbar pr-0.5">
             {agendadosTarefas.map((item) => (
               <div
                 key={item.id}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl border shadow-sm shrink-0 ${THEME.agendados.cardBg} ${THEME.agendados.cardBorder}`}
+                className={`flex items-center justify-between px-3.5 py-3 rounded-xl border shadow-sm shrink-0 ${THEME.agendados.cardBg} ${THEME.agendados.cardBorder}`}
               >
                 <div className="flex items-center gap-3 min-w-0 pr-2">
                   <DynamicIcon name={item.icone || 'Clock'} size={18} className={`shrink-0 ${THEME.agendados.icone}`} />
@@ -112,7 +112,7 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
             ))}
           </div>
         ) : (
-          <div className={`h-[158px] lg:h-full lg:flex-1 flex items-center justify-center rounded-xl border border-dashed text-xs text-center shrink-0 ${THEME.agendados.cardBg} ${THEME.agendados.cardBorder} ${THEME.agendados.tempoRestante}`}>
+          <div className={`h-[154px] lg:h-full lg:flex-1 flex items-center justify-center rounded-xl border border-dashed text-xs text-center shrink-0 ${THEME.agendados.cardBg} ${THEME.agendados.cardBorder} ${THEME.agendados.tempoRestante}`}>
             Nenhum compromisso agendado
           </div>
         )}
@@ -130,14 +130,14 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
         </div>
 
         {rotinaTarefas.length > 0 ? (
-          <div className="h-[158px] lg:h-full lg:flex-1 overflow-y-auto space-y-2 no-scrollbar pr-0.5">
+          <div className="h-[154px] lg:h-full lg:flex-1 overflow-y-auto space-y-2 no-scrollbar pr-0.5">
             {rotinaTarefas.map((item) => {
               const atrasado = rotinaAtrasada(item);
               return (
                 <div
                   key={item.id}
                   onClick={() => toggleConcluir(item.id)}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl border cursor-pointer transition-colors shadow-sm shrink-0 ${THEME.rotina.cardBg} ${THEME.rotina.cardBorder}`}
+                  className={`flex items-center justify-between px-3.5 py-3 rounded-xl border cursor-pointer transition-colors shadow-sm shrink-0 ${THEME.rotina.cardBg} ${THEME.rotina.cardBorder}`}
                 >
                   <div className="flex items-center gap-3 min-w-0 pr-2">
                     <button className={`transition-colors shrink-0 ${THEME.rotina.checkBtn}`}>
@@ -156,7 +156,7 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
             })}
           </div>
         ) : (
-          <div className={`h-[158px] lg:h-full lg:flex-1 flex items-center justify-center rounded-xl border border-dashed text-xs text-center shrink-0 ${THEME.rotina.cardBg} ${THEME.rotina.cardBorder} text-purple-400`}>
+          <div className={`h-[154px] lg:h-full lg:flex-1 flex items-center justify-center rounded-xl border border-dashed text-xs text-center shrink-0 ${THEME.rotina.cardBg} ${THEME.rotina.cardBorder} text-purple-400`}>
             Nenhuma rotina pendente
           </div>
         )}
@@ -164,7 +164,6 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
 
       {/* 3. BLOCO FOCO */}
       <section className="flex-1 min-h-0 flex flex-col lg:h-full lg:flex-1 lg:justify-start lg:gap-3">
-        {/* Cabeçalho alinhado com margem idêntica aos blocos 1 e 2 */}
         <div className="flex items-center justify-between mb-1.5 shrink-0">
           <h2 className={`text-xs uppercase tracking-wider font-bold ${THEME.foco.titulo}`}>
             Foco
@@ -174,7 +173,7 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
           </span>
         </div>
 
-        {/* Card Principal de Foco */}
+        {/* Card Principal de Foco (Intacto) */}
         {cardPrincipal ? (
           <div className={`px-3.5 py-2.5 rounded-xl border shadow-sm flex flex-col shrink-0 ${THEME.foco.principalBg} ${THEME.foco.principalBorder}`}>
             <div className="flex items-center gap-2.5">
@@ -217,17 +216,17 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
           </div>
         )}
 
-        {/* Cards no Radar (exatamente 2 tarefas, simetria vertical e mesmo tamanho dos cards secundários) */}
+        {/* Cards no Radar (Mesmo tamanho aumentado dos cards de Agenda e Rotina) */}
         {cardsRadar.length > 0 && (
           <div className="shrink-0 flex flex-col lg:flex-1 lg:min-h-0">
             <span className={`text-[11px] font-semibold uppercase tracking-wide my-1.5 shrink-0 ${THEME.foco.radarTitulo}`}>
               A seguir no radar ({cardsRadar.length})
             </span>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {cardsRadar.map((item, index) => (
                 <div
                   key={item.id}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border shadow-sm shrink-0 ${THEME.foco.radarBg} ${THEME.foco.radarBorder}`}
+                  className={`flex items-center gap-3 px-3.5 py-3 rounded-xl border shadow-sm shrink-0 ${THEME.foco.radarBg} ${THEME.foco.radarBorder}`}
                 >
                   <span className={`font-mono font-bold text-xs shrink-0 ${THEME.foco.radarNumero}`}>
                     {index + 2}.
