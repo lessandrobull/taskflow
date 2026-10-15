@@ -24,7 +24,7 @@ export function useTasks() {
 
   const [sincronizandoAgenda, setSincronizandoAgenda] = useState(false);
 
-  // Mantém backup no localStorage
+  // Mantém backup local de segurança
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(tarefas));
@@ -33,31 +33,33 @@ export function useTasks() {
     }
   }, [tarefas]);
 
-  // Carrega dados iniciais do Supabase e assina mudanças em tempo real
+  // Carga inicial do Supabase e escuta em tempo real (WebSockets)
   useEffect(() => {
     async function carregarDoSupabase() {
-      const { data, error } = await supabase.from('tarefas').select('*');
-      if (!error && data && data.length > 0) {
-        setTarefas(data);
-      } else if (!error && data && data.length === 0) {
-        // Se a tabela estiver vazia, sobe os dados locais para o banco
-        const locais = (() => {
-          try {
-            const s = localStorage.getItem(STORAGE_KEY);
-            return s ? JSON.parse(s) : DADOS_INICIAIS;
-          } catch {
-            return DADOS_INICIAIS;
+      try {
+        const { data, error } = await supabase.from('tarefas').select('*');
+        if (!error && data && data.length > 0) {
+          setTarefas(data);
+        } else if (!error && data && data.length === 0) {
+          const locais = (() => {
+            try {
+              const s = localStorage.getItem(STORAGE_KEY);
+              return s ? JSON.parse(s) : DADOS_INICIAIS;
+            } catch {
+              return DADOS_INICIAIS;
+            }
+          })();
+          if (locais.length > 0) {
+            await supabase.from('tarefas').upsert(locais);
           }
-        })();
-        if (locais.length > 0) {
-          await supabase.from('tarefas').upsert(locais);
         }
+      } catch (err) {
+        console.error('Erro ao carregar dados do Supabase:', err);
       }
     }
 
     carregarDoSupabase();
 
-    // Inscrição em tempo real (Realtime Channel)
     const canal = supabase
       .channel('tarefas-realtime')
       .on(
@@ -114,7 +116,13 @@ export function useTasks() {
             });
 
           if (novosItens.length > 0) {
-            supabase.from('tarefas').upsert(novosItens).catch(console.error);
+            (async () => {
+              try {
+                await supabase.from('tarefas').upsert(novosItens);
+              } catch (e) {
+                console.error('Falha ao subir eventos para o Supabase:', e);
+              }
+            })();
           }
 
           return [...novosItens, ...prev];
@@ -159,12 +167,24 @@ export function useTasks() {
       prev.map((t) => (t.id === id ? tarefaAtualizada : t))
     );
 
-    supabase.from('tarefas').upsert(tarefaAtualizada).catch(console.error);
+    (async () => {
+      try {
+        await supabase.from('tarefas').upsert(tarefaAtualizada);
+      } catch (e) {
+        console.error('Falha ao atualizar conclusao no Supabase:', e);
+      }
+    })();
   };
 
   const removerTarefa = (id) => {
     setTarefas((prev) => prev.filter((t) => t.id !== id));
-    supabase.from('tarefas').delete().eq('id', id).catch(console.error);
+    (async () => {
+      try {
+        await supabase.from('tarefas').delete().eq('id', id);
+      } catch (e) {
+        console.error('Falha ao remover tarefa no Supabase:', e);
+      }
+    })();
   };
 
   const editarTarefa = (id, novosDados) => {
@@ -177,7 +197,13 @@ export function useTasks() {
       prev.map((t) => (t.id === id ? tarefaAtualizada : t))
     );
 
-    supabase.from('tarefas').upsert(tarefaAtualizada).catch(console.error);
+    (async () => {
+      try {
+        await supabase.from('tarefas').upsert(tarefaAtualizada);
+      } catch (e) {
+        console.error('Falha ao editar tarefa no Supabase:', e);
+      }
+    })();
   };
 
   const moverParaCima = (id) => {
@@ -202,7 +228,13 @@ export function useTasks() {
       })
     );
 
-    supabase.from('tarefas').upsert([atual1, atual2]).catch(console.error);
+    (async () => {
+      try {
+        await supabase.from('tarefas').upsert([atual1, atual2]);
+      } catch (e) {
+        console.error('Falha ao reordenar tarefa no Supabase:', e);
+      }
+    })();
   };
 
   const moverParaBaixo = (id) => {
@@ -227,7 +259,13 @@ export function useTasks() {
       })
     );
 
-    supabase.from('tarefas').upsert([atual1, atual2]).catch(console.error);
+    (async () => {
+      try {
+        await supabase.from('tarefas').upsert([atual1, atual2]);
+      } catch (e) {
+        console.error('Falha ao reordenar tarefa no Supabase:', e);
+      }
+    })();
   };
 
   const alternarPrioridade = (id) => {
@@ -249,7 +287,13 @@ export function useTasks() {
       prev.map((t) => (t.id === id ? tarefaAtualizada : t))
     );
 
-    supabase.from('tarefas').upsert(tarefaAtualizada).catch(console.error);
+    (async () => {
+      try {
+        await supabase.from('tarefas').upsert(tarefaAtualizada);
+      } catch (e) {
+        console.error('Falha ao alterar prioridade no Supabase:', e);
+      }
+    })();
   };
 
   const adicionarTarefa = ({
@@ -280,7 +324,14 @@ export function useTasks() {
     };
 
     setTarefas((prev) => [...prev, nova]);
-    supabase.from('tarefas').insert(nova).catch(console.error);
+
+    (async () => {
+      try {
+        await supabase.from('tarefas').insert(nova);
+      } catch (e) {
+        console.error('Falha ao inserir tarefa no Supabase:', e);
+      }
+    })();
   };
 
   return {
