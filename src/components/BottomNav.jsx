@@ -5,7 +5,7 @@ import { THEME } from '../colors';
 export default function BottomNav({ abaAtiva, setAbaAtiva }) {
   const abas = [
     { id: 'hoje', label: 'Hoje', Icone: CalendarBlank },
-    { id: 'fila', label: 'Fila Global', Icone: ListNumbers },
+    { id: 'fila', label: 'Filas', Icone: ListNumbers },
     { id: 'contextos', label: 'Contextos', Icone: TreeStructure },
     { id: 'notas', label: 'Notas', Icone: NotePencil },
   ];

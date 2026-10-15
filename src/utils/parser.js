@@ -30,13 +30,22 @@ const MAPA_ICONES = {
   remedio: 'Pill',
   meditar: 'Heartbeat',
 
-  // Trabalho, Código e Estudos
+  // Trabalho Digital, PC, Apps e Estudos
+  pc: 'Cpu',
+  computador: 'Cpu',
+  codigo: 'Cpu',
+  código: 'Cpu',
+  bug: 'Cpu',
+  deploy: 'Cpu',
+  app: 'Cpu',
+  software: 'Cpu',
+  programacao: 'Cpu',
+  programação: 'Cpu',
+  quizhub: 'Cpu',
+  hos: 'Cpu',
   estudo: 'BookOpen',
   ler: 'BookOpen',
   livro: 'BookOpen',
-  codigo: 'Code',
-  bug: 'Code',
-  deploy: 'CloudArrowUp',
   reuniao: 'UsersThree',
 };
 
@@ -124,7 +133,7 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchContexto[0], '').trim();
   }
 
-  // 3. Extração de Ponto de Início ("iniciando no sábado", "a partir de sábado", "começando sábado")
+  // 3. Extração de Ponto de Início
   const regexInicio =
     /\b(?:iniciando(?:\s+no|\s+na)?|a\s+partir\s+de|come[çc]ando(?:\s+no|\s+na)?)\s+(domingo|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[aá]bado)\b/i;
   const matchInicio = texto.match(regexInicio);
@@ -173,7 +182,7 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchACada[0], '').trim();
   }
 
-  // 4.3 "X vez(es) por [tempo]" ou "Xx por [tempo]" (ex: 1x por semana, 2 vezes por mês, 1x na semana)
+  // 4.3 "X vez(es) por [tempo]"
   const regexVezPor =
     /\b(\d+|um|uma|dois|duas|tr[êe]s|quatro|cinco)\s*(?:x|vez(?:es)?)\s+(?:por|na|no|ao|à)\s+(dia|semana|m[êe]s|mes|ano)\b/i;
   const matchVezPor = texto.match(regexVezPor);
@@ -191,7 +200,7 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchVezPor[0], '').trim();
   }
 
-  // 4.4 "todo(s) (os)? [dia|semana|mês|dia_semana]" ou "toda(s) (as)? [semana|dia_semana]"
+  // 4.4 "todo(s) [dia/semana]"
   const regexTodo =
     /\b(?:todos?\s+os|todas?\s+as|todo|toda)\s+(dia|semana|m[êe]s|domingo|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[aá]bado)\b/i;
   const matchTodo = texto.match(regexTodo);
@@ -218,13 +227,11 @@ export function processarInputRapido(textoBruto) {
     if (!proximaData) {
       proximaData = formatarDataISO(new Date());
     }
-    cadencia = {
-      intervaloDias,
-    };
+    cadencia = { intervaloDias };
   }
 
   // 5. Seleção de Ícone Dinâmico
-  let icone = 'Circle';
+  let icone = tipo === TIPOS_TAREFA.AGENDADO ? 'Clock' : 'Circle';
   const textoMinusculo = texto.toLowerCase();
   for (const [chave, iconeNome] of Object.entries(MAPA_ICONES)) {
     if (textoMinusculo.includes(chave)) {

@@ -54,7 +54,7 @@ export default function TodayView({ tarefas, toggleConcluir }) {
     return false;
   };
 
-  // 1. Agendados: todos os pendentes cujo horário ainda não passou
+  // 1. Agenda: compromissos pendentes com horário no dia
   const agendadosTarefas = tarefas
     .filter((t) => {
       if (t.tipo !== TIPOS_TAREFA.AGENDADO) return false;
@@ -63,7 +63,7 @@ export default function TodayView({ tarefas, toggleConcluir }) {
     })
     .sort((a, b) => (a.horario || '').localeCompare(b.horario || ''));
 
-  // 2. Rotina: todas as pendentes com data de ativação atingida
+  // 2. Rotina: pendentes com data de ativação atingida
   const rotinaTarefas = tarefas
     .filter((t) => {
       if (t.tipo !== TIPOS_TAREFA.CADENCIA || t.concluido) return false;
@@ -71,7 +71,7 @@ export default function TodayView({ tarefas, toggleConcluir }) {
       return t.proximaData <= hojeISO;
     });
 
-  // 3. Foco Atual: fila ordenada
+  // 3. Foco: fila ordenada de execução
   const filaFoco = tarefas
     .filter((t) => t.tipo === TIPOS_TAREFA.FOCO && !t.concluido)
     .sort((a, b) => a.ordemFila - b.ordemFila);
@@ -81,10 +81,10 @@ export default function TodayView({ tarefas, toggleConcluir }) {
 
   return (
     <div className="h-full flex flex-col justify-between gap-2.5 overflow-hidden">
-      {/* 1. BLOCO AGENDADOS (Exatamente 3 tarefas visíveis, com rolagem) */}
+      {/* 1. BLOCO AGENDA */}
       <section className="flex flex-col shrink-0">
         <h2 className={`text-xs uppercase tracking-wider font-bold mb-1.5 shrink-0 ${THEME.agendados.titulo}`}>
-          Agendados
+          Agenda
         </h2>
         {agendadosTarefas.length > 0 ? (
           <div className="h-[158px] overflow-y-auto space-y-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -94,7 +94,7 @@ export default function TodayView({ tarefas, toggleConcluir }) {
                 className={`flex items-center justify-between p-3 rounded-lg border shadow-sm shrink-0 ${THEME.agendados.cardBg} ${THEME.agendados.cardBorder}`}
               >
                 <div className="flex items-center gap-3 min-w-0 pr-2">
-                  <DynamicIcon name={item.icone} size={18} className={`shrink-0 ${THEME.agendados.icone}`} />
+                  <DynamicIcon name={item.icone || 'Clock'} size={18} className={`shrink-0 ${THEME.agendados.icone}`} />
                   <span className={`text-sm font-semibold truncate ${THEME.agendados.texto}`}>{item.titulo}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs shrink-0">
@@ -111,7 +111,7 @@ export default function TodayView({ tarefas, toggleConcluir }) {
         )}
       </section>
 
-      {/* 2. BLOCO ROTINA (Exatamente 3 tarefas visíveis, com rolagem) */}
+      {/* 2. BLOCO ROTINA */}
       <section className="flex flex-col shrink-0">
         <h2 className={`text-xs uppercase tracking-wider font-bold mb-1.5 shrink-0 ${THEME.rotina.titulo}`}>
           Rotina
@@ -149,13 +149,13 @@ export default function TodayView({ tarefas, toggleConcluir }) {
         )}
       </section>
 
-      {/* 3. BLOCO FILA DE FOCO */}
+      {/* 3. BLOCO FOCO */}
       <section className="flex-1 min-h-0 flex flex-col justify-between">
         <h2 className={`text-xs uppercase tracking-wider font-bold mb-1.5 shrink-0 ${THEME.foco.titulo}`}>
-          Foco Atual
+          Foco
         </h2>
 
-        {/* Card 1: Principal (Preenche o espaço restante) */}
+        {/* Card Principal */}
         {cardPrincipal ? (
           <div className={`flex-1 min-h-0 p-4 rounded-xl border shadow-sm flex flex-col justify-between ${THEME.foco.principalBg} ${THEME.foco.principalBorder}`}>
             <div className="flex items-start gap-3">
@@ -191,7 +191,7 @@ export default function TodayView({ tarefas, toggleConcluir }) {
           </div>
         )}
 
-        {/* Cards Seguintes (Radar): Exatamente 2 tarefas visíveis, sem círculo de tick, com rolagem */}
+        {/* Cards no Radar */}
         {cardsRadar.length > 0 && (
           <div className="shrink-0 flex flex-col mt-2">
             <span className={`text-[11px] font-semibold uppercase tracking-wide mb-1 shrink-0 ${THEME.foco.radarTitulo}`}>

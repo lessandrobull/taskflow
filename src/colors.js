@@ -26,7 +26,7 @@ export const THEME = {
     btn: 'text-zinc-400 hover:text-zinc-800',
   },
 
-  // Bloco 1: Agendados (Azul Celeste)
+  // Bloco 1: Agenda (Azul Celeste)
   agendados: {
     titulo: 'text-sky-700',
     cardBg: 'bg-sky-50',
@@ -46,27 +46,32 @@ export const THEME = {
     texto: 'text-purple-950',
     checkBtn: 'text-purple-400 hover:text-purple-600',
     alertaAtrasado: 'bg-rose-100 text-rose-700 border-rose-200',
+    p1: 'bg-purple-100 text-purple-800 border-purple-300',
+    p2: 'bg-purple-50 text-purple-700 border-purple-200',
+    p3: 'bg-zinc-100 text-zinc-600 border-zinc-300',
   },
 
-  // Bloco 3: Foco Atual (Âmbar / Laranja)
+  // Bloco 3: Foco (Verde Esmeralda)
   foco: {
-    titulo: 'text-amber-800',
-    // Card Principal
-    principalBg: 'bg-amber-50',
-    principalBorder: 'border-amber-200',
-    principalIcone: 'text-amber-700',
+    titulo: 'text-emerald-800',
+    principalBg: 'bg-emerald-50',
+    principalBorder: 'border-emerald-200',
+    principalIcone: 'text-emerald-700',
     principalTexto: 'text-zinc-900',
-    principalDivisor: 'border-amber-200/80',
-    concluirBtn: 'bg-amber-900 text-amber-50 hover:bg-amber-950', // Tom escuro da cor de Foco Atual
+    principalDivisor: 'border-emerald-200/80',
+    concluirBtn: 'bg-emerald-800 text-emerald-50 hover:bg-emerald-900',
     pularBtn: 'text-zinc-500 hover:text-zinc-800',
     vazioBg: 'bg-zinc-50 border-zinc-300 text-zinc-500',
-    // Cards Radar
     radarTitulo: 'text-zinc-500',
-    radarBg: 'bg-orange-50/50',
-    radarBorder: 'border-orange-200/80',
-    radarNumero: 'text-orange-600',
-    radarIcone: 'text-orange-600',
+    radarBg: 'bg-emerald-50/40',
+    radarBorder: 'border-emerald-200/80',
+    radarNumero: 'text-emerald-700',
+    radarIcone: 'text-emerald-700',
     radarTexto: 'text-zinc-800',
+    raio: 'text-emerald-600',
+    p1: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    p2: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    p3: 'bg-zinc-100 text-zinc-600 border-zinc-300',
   },
 
   // Página de Contextos
@@ -76,22 +81,30 @@ export const THEME = {
     divisor: 'border-zinc-200',
     linhaHover: 'hover:bg-zinc-100',
     setaIcone: 'text-zinc-500',
-    pastaAbertaIcone: 'text-amber-500',
+    pastaAbertaIcone: 'text-zinc-400',
     pastaFechadaIcone: 'text-zinc-400',
     pastaNome: 'text-zinc-800',
     contador: 'text-zinc-400',
     addBtn: 'text-zinc-400 hover:text-zinc-800',
     bordaArvore: 'border-zinc-200',
 
-    tarefaBg: 'bg-white',
-    tarefaBorder: 'border-zinc-200 hover:border-zinc-300',
+    // Foco (Verde)
+    tarefaBg: 'bg-emerald-50/40',
+    tarefaBorder: 'border-emerald-200/80 hover:border-emerald-300',
     tarefaTexto: 'text-zinc-800',
-    tarefaIcone: 'text-zinc-500',
+    tarefaIcone: 'text-emerald-700',
 
+    // Rotina (Violeta)
     rotinaBg: 'bg-purple-50/60',
     rotinaBorder: 'border-purple-200 hover:border-purple-300',
     rotinaTexto: 'text-purple-950',
     rotinaIcone: 'text-purple-600',
+
+    // Agenda (Azul Celeste)
+    agendaBg: 'bg-sky-50/60',
+    agendaBorder: 'border-sky-200 hover:border-sky-300',
+    agendaTexto: 'text-sky-950',
+    agendaIcone: 'text-sky-600',
 
     concluidaBg: 'bg-zinc-100/70 border-zinc-200 opacity-40',
     concluidaTexto: 'line-through text-zinc-400',

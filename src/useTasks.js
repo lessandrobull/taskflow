@@ -24,7 +24,6 @@ export function useTasks() {
 
   const [sincronizandoAgenda, setSincronizandoAgenda] = useState(false);
 
-  // Mantém backup local de segurança
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(tarefas));
@@ -33,7 +32,6 @@ export function useTasks() {
     }
   }, [tarefas]);
 
-  // Carga inicial do Supabase e escuta em tempo real (WebSockets)
   useEffect(() => {
     async function carregarDoSupabase() {
       try {
@@ -68,15 +66,19 @@ export function useTasks() {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             setTarefas((prev) => {
-              if (prev.some((t) => t.id === payload.new.id)) return prev;
-              return [...prev, payload.new];
+              if (prev.some((t) => t.id === payload.new?.id)) return prev;
+              return payload.new ? [...prev, payload.new] : prev;
             });
           } else if (payload.eventType === 'UPDATE') {
-            setTarefas((prev) =>
-              prev.map((t) => (t.id === payload.new.id ? payload.new : t))
-            );
+            if (payload.new?.id) {
+              setTarefas((prev) =>
+                prev.map((t) => (t.id === payload.new.id ? payload.new : t))
+              );
+            }
           } else if (payload.eventType === 'DELETE') {
-            setTarefas((prev) => prev.filter((t) => t.id === payload.old.id));
+            if (payload.old?.id) {
+              setTarefas((prev) => prev.filter((t) => t.id !== payload.old.id));
+            }
           }
         }
       )
@@ -97,23 +99,20 @@ export function useTasks() {
 
           const novosItens = eventos
             .filter((ev) => !idsExistentes.has(`gcal-${ev.id}`))
-            .map((ev) => {
-              const ehAula = /aula|aluno|ensino|class/i.test(ev.titulo);
-              return {
-                id: `gcal-${ev.id}`,
-                titulo: ev.titulo,
-                icone: ehAula ? 'ChalkboardTeacher' : 'Calendar',
-                contexto: ehAula ? 'aulas/particulares' : 'agenda/pessoal',
-                tipo: TIPOS_TAREFA.AGENDADO,
-                horario: ev.horario,
-                cadencia: null,
-                proximaData: null,
-                prioridade: PRIORIDADES.P1,
-                ordemFila: 0,
-                concluido: false,
-                concluidoEm: null,
-              };
-            });
+            .map((ev) => ({
+              id: `gcal-${ev.id}`,
+              titulo: ev.titulo,
+              icone: 'Clock',
+              contexto: 'agenda',
+              tipo: TIPOS_TAREFA.AGENDADO,
+              horario: ev.horario,
+              cadencia: null,
+              proximaData: null,
+              prioridade: PRIORIDADES.P1,
+              ordemFila: 0,
+              concluido: false,
+              concluidoEm: null,
+            }));
 
           if (novosItens.length > 0) {
             (async () => {
@@ -207,14 +206,16 @@ export function useTasks() {
   };
 
   const moverParaCima = (id) => {
+    const itemAtual = tarefas.find((t) => t.id === id);
+    if (!itemAtual) return;
+
     const fila = tarefas
-      .filter((t) => t.tipo === TIPOS_TAREFA.FOCO && !t.concluido)
+      .filter((t) => t.tipo === itemAtual.tipo && !t.concluido)
       .sort((a, b) => a.ordemFila - b.ordemFila);
 
     const index = fila.findIndex((t) => t.id === id);
     if (index <= 0) return;
 
-    const itemAtual = fila[index];
     const itemAcima = fila[index - 1];
 
     const atual1 = { ...itemAtual, ordemFila: itemAcima.ordemFila };
@@ -238,14 +239,16 @@ export function useTasks() {
   };
 
   const moverParaBaixo = (id) => {
+    const itemAtual = tarefas.find((t) => t.id === id);
+    if (!itemAtual) return;
+
     const fila = tarefas
-      .filter((t) => t.tipo === TIPOS_TAREFA.FOCO && !t.concluido)
+      .filter((t) => t.tipo === itemAtual.tipo && !t.concluido)
       .sort((a, b) => a.ordemFila - b.ordemFila);
 
     const index = fila.findIndex((t) => t.id === id);
     if (index === -1 || index >= fila.length - 1) return;
 
-    const itemAtual = fila[index];
     const itemAbaixo = fila[index + 1];
 
     const atual1 = { ...itemAtual, ordemFila: itemAbaixo.ordemFila };
@@ -318,7 +321,7 @@ export function useTasks() {
         proximaData ||
         (tipo === TIPOS_TAREFA.CADENCIA ? formatarDataISO(new Date()) : null),
       prioridade,
-      ordemFila: tarefas.filter((t) => t.tipo === TIPOS_TAREFA.FOCO).length + 1,
+      ordemFila: tarefas.filter((t) => t.tipo === tipo).length + 1,
       concluido: false,
       concluidoEm: null,
     };
