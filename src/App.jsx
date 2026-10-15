@@ -14,6 +14,7 @@ export default function App() {
   const {
     tarefas,
     toggleConcluir,
+    pularParaDepois,
     removerTarefa,
     editarTarefa,
     moverParaCima,
@@ -52,7 +53,11 @@ export default function App() {
         }`}
       >
         {abaAtiva === 'hoje' && (
-          <TodayView tarefas={tarefas} toggleConcluir={toggleConcluir} />
+          <TodayView
+            tarefas={tarefas}
+            toggleConcluir={toggleConcluir}
+            pularParaDepois={pularParaDepois}
+          />
         )}
         {abaAtiva === 'fila' && (
           <GlobalQueueView

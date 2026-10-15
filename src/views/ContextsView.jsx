@@ -123,7 +123,7 @@ function NoPasta({
           </span>
 
           <span className={`text-[10px] font-mono font-medium ${THEME.contextos.contador}`}>
-            ({no.tarefas.length})
+            ({no.totalTarefas})
           </span>
         </button>
 

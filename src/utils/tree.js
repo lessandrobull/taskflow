@@ -1,6 +1,5 @@
 /**
- * Transforma uma lista plana de tarefas em uma estrutura de árvore baseada em 'contexto'
- * Exemplo de contexto: "casa/obras externas/pintura"
+ * Transforma uma lista plana de tarefas em uma árvore com contagem acumulada
  */
 export function construirArvoreContextos(tarefas = []) {
   const raiz = {
@@ -8,6 +7,7 @@ export function construirArvoreContextos(tarefas = []) {
     caminhoCompleto: '',
     filhos: {},
     tarefas: [],
+    totalTarefas: 0,
   };
 
   if (!Array.isArray(tarefas)) return raiz;
@@ -34,6 +34,7 @@ export function construirArvoreContextos(tarefas = []) {
           caminhoCompleto: caminhoAcumulado,
           filhos: {},
           tarefas: [],
+          totalTarefas: 0,
         };
       }
 
@@ -45,5 +46,16 @@ export function construirArvoreContextos(tarefas = []) {
     });
   });
 
+  // Função recursiva para calcular totalTarefas acumulado (próprias + subpastas)
+  function calcularTotais(no) {
+    let soma = no.tarefas.length;
+    for (const filho of Object.values(no.filhos)) {
+      soma += calcularTotais(filho);
+    }
+    no.totalTarefas = soma;
+    return soma;
+  }
+
+  calcularTotais(raiz);
   return raiz;
 }

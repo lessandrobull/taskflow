@@ -4,7 +4,7 @@ import DynamicIcon from '../components/DynamicIcon';
 import { TIPOS_TAREFA } from '../types';
 import { THEME } from '../colors';
 
-export default function TodayView({ tarefas, toggleConcluir }) {
+export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) {
   const [agora, setAgora] = useState(new Date());
 
   useEffect(() => {
@@ -63,18 +63,19 @@ export default function TodayView({ tarefas, toggleConcluir }) {
     })
     .sort((a, b) => (a.horario || '').localeCompare(b.horario || ''));
 
-  // 2. Rotina: pendentes com data de ativação atingida
+  // 2. Rotina: ativadas hoje e ordenadas estritamente pela ordem manual da Fila de Rotina
   const rotinaTarefas = tarefas
     .filter((t) => {
       if (t.tipo !== TIPOS_TAREFA.CADENCIA || t.concluido) return false;
       if (!t.proximaData) return true;
       return t.proximaData <= hojeISO;
-    });
+    })
+    .sort((a, b) => (a.ordemFila || 0) - (b.ordemFila || 0));
 
   // 3. Foco: fila ordenada de execução
   const filaFoco = tarefas
     .filter((t) => t.tipo === TIPOS_TAREFA.FOCO && !t.concluido)
-    .sort((a, b) => a.ordemFila - b.ordemFila);
+    .sort((a, b) => (a.ordemFila || 0) - (b.ordemFila || 0));
 
   const cardPrincipal = filaFoco[0] || null;
   const cardsRadar = filaFoco.slice(1);
@@ -167,21 +168,23 @@ export default function TodayView({ tarefas, toggleConcluir }) {
               </div>
             </div>
 
+            {/* Botoes com lados invertidos: Pular para depois à esquerda, Concluir à direita */}
             <div className={`flex items-center justify-between pt-2 border-t ${THEME.foco.principalDivisor}`}>
+              <button
+                onClick={() => pularParaDepois(cardPrincipal.id)}
+                className={`flex items-center gap-1.5 text-xs transition-colors font-medium ${THEME.foco.pularBtn}`}
+                title="Mover para o fim da fila de foco"
+              >
+                <ArrowCounterClockwise size={14} />
+                Pular para depois
+              </button>
+
               <button
                 onClick={() => toggleConcluir(cardPrincipal.id)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow ${THEME.foco.concluirBtn}`}
               >
                 <CheckCircle size={16} weight="bold" />
                 Concluir
-              </button>
-
-              <button
-                onClick={() => toggleConcluir(cardPrincipal.id)}
-                className={`flex items-center gap-1.5 text-xs transition-colors ${THEME.foco.pularBtn}`}
-              >
-                <ArrowCounterClockwise size={14} />
-                Pular para depois
               </button>
             </div>
           </div>

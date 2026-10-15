@@ -1,13 +1,11 @@
 import { TIPOS_TAREFA, PRIORIDADES } from '../types';
 
 const MAPA_ICONES = {
-  // Aulas e Ensino
   aula: 'ChalkboardTeacher',
   aluno: 'ChalkboardTeacher',
   ensino: 'ChalkboardTeacher',
   class: 'ChalkboardTeacher',
 
-  // Casa, Limpeza e Manutenção
   limpeza: 'Broom',
   limpar: 'Broom',
   pano: 'Broom',
@@ -20,7 +18,6 @@ const MAPA_ICONES = {
   ferramenta: 'Wrench',
   torneira: 'Drop',
 
-  // Saúde, Exercício e Rotina
   treino: 'Barbell',
   academia: 'Barbell',
   corrida: 'PersonSimpleRun',
@@ -30,7 +27,6 @@ const MAPA_ICONES = {
   remedio: 'Pill',
   meditar: 'Heartbeat',
 
-  // Trabalho Digital, PC, Apps e Estudos
   pc: 'Cpu',
   computador: 'Cpu',
   codigo: 'Cpu',
@@ -125,15 +121,15 @@ export function processarInputRapido(textoBruto) {
     tipo = TIPOS_TAREFA.AGENDADO;
   }
 
-  // 2. Extração de Contexto Hierárquico (#casa/manutencao)
-  const regexContexto = /#([\w\d\s\-_/]+)(?:\s|$)/i;
+  // 2. Extração de Contexto com suporte total a acentos Unicode (#francês, #manutenção)
+  const regexContexto = /#([\p{L}\p{N}\s\-_/]+)(?:\s|$)/u;
   const matchContexto = texto.match(regexContexto);
   if (matchContexto) {
     contexto = matchContexto[1].trim().toLowerCase();
     texto = texto.replace(matchContexto[0], '').trim();
   }
 
-  // 3. Extração de Ponto de Início
+  // 3. Ponto de Início
   const regexInicio =
     /\b(?:iniciando(?:\s+no|\s+na)?|a\s+partir\s+de|come[çc]ando(?:\s+no|\s+na)?)\s+(domingo|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[aá]bado)\b/i;
   const matchInicio = texto.match(regexInicio);
@@ -146,11 +142,10 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchInicio[0], '').trim();
   }
 
-  // 4. Reconhecimento de Rotinas por Palavras-Chave
+  // 4. Reconhecimento de Rotinas
   let ehRotina = false;
   let intervaloDias = 7;
 
-  // 4.1 Advérbios diretos
   const regexAdverbios = /\b(diariamente|semanalmente|quinzenalmente|mensalmente|anualmente)\b/i;
   const matchAdv = texto.match(regexAdverbios);
   if (matchAdv) {
@@ -164,7 +159,6 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchAdv[0], '').trim();
   }
 
-  // 4.2 "A cada X [dias/semanas/meses]"
   const regexACada =
     /\ba\s+cada\s+(\d+|um|uma|dois|duas|tr[êe]s|quatro|cinco|seis|sete|oito|nove|dez|quinze|vinte|trinta)\s+(dias?|semanas?|m[êe]ses?|anos?)\b/i;
   const matchACada = texto.match(regexACada);
@@ -182,7 +176,6 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchACada[0], '').trim();
   }
 
-  // 4.3 "X vez(es) por [tempo]"
   const regexVezPor =
     /\b(\d+|um|uma|dois|duas|tr[êe]s|quatro|cinco)\s*(?:x|vez(?:es)?)\s+(?:por|na|no|ao|à)\s+(dia|semana|m[êe]s|mes|ano)\b/i;
   const matchVezPor = texto.match(regexVezPor);
@@ -200,7 +193,6 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchVezPor[0], '').trim();
   }
 
-  // 4.4 "todo(s) [dia/semana]"
   const regexTodo =
     /\b(?:todos?\s+os|todas?\s+as|todo|toda)\s+(dia|semana|m[êe]s|domingo|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[aá]bado)\b/i;
   const matchTodo = texto.match(regexTodo);
@@ -230,7 +222,7 @@ export function processarInputRapido(textoBruto) {
     cadencia = { intervaloDias };
   }
 
-  // 5. Seleção de Ícone Dinâmico
+  // 5. Ícone
   let icone = tipo === TIPOS_TAREFA.AGENDADO ? 'Clock' : 'Circle';
   const textoMinusculo = texto.toLowerCase();
   for (const [chave, iconeNome] of Object.entries(MAPA_ICONES)) {

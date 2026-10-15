@@ -175,6 +175,35 @@ export function useTasks() {
     })();
   };
 
+  const pularParaDepois = (id) => {
+    const itemAtual = tarefas.find((t) => t.id === id);
+    if (!itemAtual || itemAtual.tipo !== TIPOS_TAREFA.FOCO) return;
+
+    const filaFoco = tarefas
+      .filter((t) => t.tipo === TIPOS_TAREFA.FOCO && !t.concluido)
+      .sort((a, b) => a.ordemFila - b.ordemFila);
+
+    if (filaFoco.length <= 1) return;
+
+    const maiorOrdem = filaFoco[filaFoco.length - 1].ordemFila || filaFoco.length;
+    const tarefaAtualizada = {
+      ...itemAtual,
+      ordemFila: maiorOrdem + 1,
+    };
+
+    setTarefas((prev) =>
+      prev.map((t) => (t.id === id ? tarefaAtualizada : t))
+    );
+
+    (async () => {
+      try {
+        await supabase.from('tarefas').upsert(tarefaAtualizada);
+      } catch (e) {
+        console.error('Falha ao pular tarefa no Supabase:', e);
+      }
+    })();
+  };
+
   const removerTarefa = (id) => {
     setTarefas((prev) => prev.filter((t) => t.id !== id));
     (async () => {
@@ -342,6 +371,7 @@ export function useTasks() {
     sincronizandoAgenda,
     sincronizarAgenda,
     toggleConcluir,
+    pularParaDepois,
     removerTarefa,
     editarTarefa,
     moverParaCima,
