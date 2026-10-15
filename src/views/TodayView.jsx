@@ -164,7 +164,7 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
 
       {/* 3. BLOCO FOCO */}
       <section className="flex-1 min-h-0 flex flex-col justify-between lg:h-full lg:flex-1 lg:justify-start lg:gap-3">
-        <div className="flex items-center justify-between mb-1.5 shrink-0">
+        <div className="flex items-center justify-between mb-1 shrink-0">
           <h2 className={`text-xs uppercase tracking-wider font-bold ${THEME.foco.titulo}`}>
             Foco
           </h2>
@@ -173,9 +173,9 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
           </span>
         </div>
 
-        {/* Card Principal de Foco */}
+        {/* Card Principal de Foco (Altura compacta e divisória centralizada) */}
         {cardPrincipal ? (
-          <div className={`p-4 rounded-xl border shadow-sm flex flex-col justify-between ${THEME.foco.principalBg} ${THEME.foco.principalBorder}`}>
+          <div className={`px-3.5 py-2.5 rounded-xl border shadow-sm flex flex-col shrink-0 ${THEME.foco.principalBg} ${THEME.foco.principalBorder}`}>
             {/* Topo do Card: Número 1, Ícone e Título com alinhamento vertical */}
             <div className="flex items-center gap-2.5">
               <span className="font-mono font-bold text-sm text-emerald-800 shrink-0">
@@ -183,7 +183,7 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
               </span>
               <DynamicIcon
                 name={cardPrincipal.icone}
-                size={19}
+                size={18}
                 weight="bold"
                 className={`shrink-0 ${THEME.foco.principalIcone}`}
               />
@@ -192,8 +192,8 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
               </h3>
             </div>
 
-            {/* Rodapé do Card: Divisória centralizada e Botões com espaçamento */}
-            <div className={`flex items-center justify-between pt-3 pb-0.5 mt-3.5 border-t ${THEME.foco.principalDivisor}`}>
+            {/* Rodapé do Card: Divisória perfeitamente equilibrada */}
+            <div className={`flex items-center justify-between pt-2 mt-2 border-t ${THEME.foco.principalDivisor}`}>
               <button
                 onClick={() => pularParaDepois(cardPrincipal.id)}
                 className={`flex items-center gap-1.5 text-xs transition-colors font-medium ${THEME.foco.pularBtn}`}
@@ -205,7 +205,7 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
 
               <button
                 onClick={() => toggleConcluir(cardPrincipal.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${THEME.foco.concluirBtn}`}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${THEME.foco.concluirBtn}`}
               >
                 <CheckCircle size={15} weight="bold" />
                 Concluir
@@ -213,28 +213,28 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
             </div>
           </div>
         ) : (
-          <div className={`p-4 rounded-xl border border-dashed flex items-center justify-center text-center text-xs ${THEME.foco.vazioBg}`}>
+          <div className={`p-3 rounded-xl border border-dashed flex items-center justify-center text-center text-xs ${THEME.foco.vazioBg}`}>
             Nenhuma tarefa na fila de foco para hoje.
           </div>
         )}
 
-        {/* Cards no Radar */}
+        {/* Cards no Radar (Compactados para exibir as duas tarefas perfeitamente acima da aba inferior) */}
         {cardsRadar.length > 0 && (
-          <div className="shrink-0 lg:flex-1 lg:min-h-0 flex flex-col mt-2 lg:mt-0">
+          <div className="shrink-0 lg:flex-1 lg:min-h-0 flex flex-col mt-1.5 lg:mt-0">
             <span className={`text-[11px] font-semibold uppercase tracking-wide mb-1 shrink-0 ${THEME.foco.radarTitulo}`}>
               A seguir no radar ({cardsRadar.length})
             </span>
-            <div className="h-[104px] lg:h-full lg:flex-1 overflow-y-auto space-y-2 no-scrollbar pr-0.5">
+            <div className="h-[88px] lg:h-full lg:flex-1 overflow-y-auto space-y-1.5 no-scrollbar pr-0.5">
               {cardsRadar.map((item, index) => (
                 <div
                   key={item.id}
-                  className={`flex items-center gap-3 p-3 rounded-xl border shadow-sm shrink-0 ${THEME.foco.radarBg} ${THEME.foco.radarBorder}`}
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border shadow-sm shrink-0 ${THEME.foco.radarBg} ${THEME.foco.radarBorder}`}
                 >
                   <span className={`font-mono font-bold text-xs shrink-0 ${THEME.foco.radarNumero}`}>
                     {index + 2}.
                   </span>
                   {item.icone && item.icone !== 'Circle' && (
-                    <DynamicIcon name={item.icone} size={18} className={`shrink-0 ${THEME.foco.radarIcone}`} />
+                    <DynamicIcon name={item.icone} size={17} className={`shrink-0 ${THEME.foco.radarIcone}`} />
                   )}
                   <span className={`truncate text-sm font-medium ${THEME.foco.radarTexto}`}>
                     {item.titulo}
