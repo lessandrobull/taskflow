@@ -19,7 +19,6 @@ import { THEME } from '../colors';
 
 const PASTAS_STORAGE_KEY = 'taskflow_pastas_abertas_v1';
 
-// Card de Tarefa individual reutilizado no Mobile e no Desktop
 function CardTarefaContexto({
   tarefa,
   editandoId,
@@ -34,17 +33,13 @@ function CardTarefaContexto({
   const ehRotina = tarefa.tipo === TIPOS_TAREFA.CADENCIA;
   const ehAgendado = tarefa.tipo === TIPOS_TAREFA.AGENDADO;
 
-  const estiloCard = tarefa.concluido
-    ? THEME.contextos.concluidaBg
-    : ehAgendado
+  const estiloCard = ehAgendado
     ? `${THEME.contextos.agendaBg} ${THEME.contextos.agendaBorder}`
     : ehRotina
     ? `${THEME.contextos.rotinaBg} ${THEME.contextos.rotinaBorder}`
     : `${THEME.contextos.tarefaBg} ${THEME.contextos.tarefaBorder}`;
 
-  const estiloTexto = tarefa.concluido
-    ? THEME.contextos.concluidaTexto
-    : ehAgendado
+  const estiloTexto = ehAgendado
     ? THEME.contextos.agendaTexto
     : ehRotina
     ? THEME.contextos.rotinaTexto
@@ -122,7 +117,7 @@ function CardTarefaContexto({
 
       {editandoId !== tarefa.id && (
         <div className="flex items-center gap-1 shrink-0">
-          {!tarefa.concluido && !ehAgendado && (
+          {!ehAgendado && (
             <button
               onClick={() => alternarPrioridade(tarefa.id)}
               className={`px-1.5 py-0.5 rounded text-[9px] font-mono border uppercase tracking-wider ${getBadgePrioridade(tarefa)}`}
@@ -153,9 +148,6 @@ function CardTarefaContexto({
   );
 }
 
-// ----------------------------------------------------
-// NÓ EM ÁRVORE RECURSIVO (USADO NO MOBILE)
-// ----------------------------------------------------
 function NoPastaMobile({
   no,
   pastasAbertas,
@@ -169,6 +161,7 @@ function NoPastaMobile({
   const [mostrarInput, setMostrarInput] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
   const [textoEdicao, setTextoEdicao] = useState('');
+  const [erroHorario, setErroHorario] = useState('');
 
   const temFilhos = Object.keys(no.filhos).length > 0;
   const temTarefas = no.tarefas.length > 0;
@@ -181,13 +174,25 @@ function NoPastaMobile({
     const parsed = processarInputRapido(novoTexto.trim());
     if (!parsed || !parsed.titulo) return;
 
+    const contextoDestino = parsed.contexto !== 'geral' ? parsed.contexto : no.caminhoCompleto;
+    const ehContextoAgenda = contextoDestino === 'agenda' || contextoDestino.startsWith('agenda/');
+
+    if (ehContextoAgenda && !parsed.horario) {
+      setErroHorario('Informe o horário (ex: às 14h ou @14:30)');
+      setTimeout(() => setErroHorario(''), 3500);
+      return;
+    }
+
     onAdicionarNaPasta({
       ...parsed,
-      contexto: parsed.contexto !== 'geral' ? parsed.contexto : no.caminhoCompleto,
+      tipo: ehContextoAgenda ? TIPOS_TAREFA.AGENDADO : parsed.tipo,
+      icone: ehContextoAgenda ? 'Clock' : parsed.icone,
+      contexto: contextoDestino,
     });
 
     setNovoTexto('');
     setMostrarInput(false);
+    setErroHorario('');
   };
 
   const iniciarEdicao = (tarefa) => {
@@ -264,22 +269,30 @@ function NoPastaMobile({
       {aberta && (
         <div className={`pl-4 ml-2 border-l space-y-2 pt-1 ${THEME.contextos.bordaArvore}`}>
           {mostrarInput && (
-            <form onSubmit={handleCriarItem} className="flex items-center gap-2 pr-2 my-1">
-              <input
-                type="text"
-                autoFocus
-                value={novoTexto}
-                onChange={(e) => setNovoTexto(e.target.value)}
-                placeholder={`Ação em "${no.nome}"...`}
-                className={`flex-1 rounded-lg px-2.5 py-1 text-xs focus:outline-none ${THEME.quickInput.bg} ${THEME.quickInput.border} ${THEME.quickInput.text} ${THEME.quickInput.placeholder} ${THEME.quickInput.borderFocus}`}
-              />
-              <button
-                type="submit"
-                disabled={!novoTexto.trim()}
-                className={`p-1 rounded disabled:opacity-30 ${THEME.foco.concluirBtn}`}
-              >
-                <Plus size={12} weight="bold" />
-              </button>
+            <form onSubmit={handleCriarItem} className="flex flex-col gap-1 pr-2 my-1">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  autoFocus
+                  value={novoTexto}
+                  onChange={(e) => {
+                    setNovoTexto(e.target.value);
+                    if (erroHorario) setErroHorario('');
+                  }}
+                  placeholder={`Ação em "${no.nome}"...`}
+                  className={`flex-1 rounded-lg px-2.5 py-1 text-xs focus:outline-none ${THEME.quickInput.bg} ${THEME.quickInput.border} ${THEME.quickInput.text} ${THEME.quickInput.placeholder} ${THEME.quickInput.borderFocus}`}
+                />
+                <button
+                  type="submit"
+                  disabled={!novoTexto.trim()}
+                  className="p-1 rounded bg-zinc-800 text-white hover:bg-zinc-900 disabled:opacity-30 transition-colors"
+                >
+                  <Plus size={12} weight="bold" />
+                </button>
+              </div>
+              {erroHorario && (
+                <span className="text-[10px] text-rose-500 font-semibold px-1">{erroHorario}</span>
+              )}
             </form>
           )}
 
@@ -324,9 +337,6 @@ function NoPastaMobile({
   );
 }
 
-// ----------------------------------------------------
-// NÓ EM ÁRVORE APENAS DE NAVEGAÇÃO (USADO NO DESKTOP)
-// ----------------------------------------------------
 function NoPastaDesktopSidebar({
   no,
   caminhoSelecionado,
@@ -345,10 +355,10 @@ function NoPastaDesktopSidebar({
   return (
     <div className="space-y-0.5">
       <div
-        className={`flex items-center justify-between py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${
+        className={`flex items-center justify-between py-1.5 px-2.5 rounded-lg cursor-pointer transition-colors ${
           selecionada
-            ? 'bg-zinc-100 text-zinc-950 font-bold border border-zinc-200'
-            : 'hover:bg-zinc-50 text-zinc-700'
+            ? 'bg-zinc-200/80 text-zinc-950 font-bold border border-zinc-300'
+            : 'hover:bg-zinc-100 text-zinc-700'
         }`}
         onClick={() => setCaminhoSelecionado(no.caminhoCompleto)}
       >
@@ -361,34 +371,22 @@ function NoPastaDesktopSidebar({
               }}
               className="p-0.5 text-zinc-400 hover:text-zinc-700"
             >
-              {aberta ? (
-                <CaretDown size={11} weight="bold" />
-              ) : (
-                <CaretRight size={11} weight="bold" />
-              )}
+              {aberta ? <CaretDown size={11} weight="bold" /> : <CaretRight size={11} weight="bold" />}
             </button>
           ) : (
             <span className="w-2.5" />
           )}
 
           {aberta ? (
-            <FolderOpen
-              size={15}
-              weight={selecionada ? 'fill' : 'regular'}
-              className={selecionada ? 'text-zinc-800' : 'text-zinc-400'}
-            />
+            <FolderOpen size={15} weight="regular" className={selecionada ? 'text-zinc-900' : 'text-zinc-400'} />
           ) : (
-            <Folder
-              size={15}
-              weight={selecionada ? 'fill' : 'regular'}
-              className={selecionada ? 'text-zinc-800' : 'text-zinc-400'}
-            />
+            <Folder size={15} weight="regular" className={selecionada ? 'text-zinc-900' : 'text-zinc-400'} />
           )}
 
           <span className="text-xs capitalize truncate">{no.nome}</span>
         </div>
 
-        <span className="text-[10px] font-mono text-zinc-400">
+        <span className="text-[10px] font-mono text-zinc-400 font-medium">
           {no.totalTarefas}
         </span>
       </div>
@@ -411,9 +409,6 @@ function NoPastaDesktopSidebar({
   );
 }
 
-// ----------------------------------------------------
-// COMPONENTE PRINCIPAL CONTEXTSVIEW
-// ----------------------------------------------------
 export default function ContextsView({
   tarefas,
   adicionarTarefa,
@@ -430,24 +425,24 @@ export default function ContextsView({
     }
   });
 
-  const arvore = construirArvoreContextos(tarefas);
+  // REGRA: Filtra apenas tarefas ativas. Concluídas somem de Contextos.
+  const tarefasAtivas = tarefas.filter((t) => !t.concluido);
+  const arvore = construirArvoreContextos(tarefasAtivas);
 
-  // Pasta 'agenda' sempre no topo; demais pastas em ordem alfabética
   const pastasPrincipais = Object.values(arvore.filhos).sort((a, b) => {
     if (a.nome === 'agenda') return -1;
     if (b.nome === 'agenda') return 1;
     return a.nome.localeCompare(b.nome);
   });
 
-  // Estado da pasta selecionada no Desktop (padrão: agenda ou primeira pasta existente)
   const [caminhoSelecionado, setCaminhoSelecionado] = useState(
     () => pastasPrincipais[0]?.caminhoCompleto || 'agenda'
   );
 
-  // Estados de edição e novo input para a área de detalhe do Desktop
   const [novoTextoDesktop, setNovoTextoDesktop] = useState('');
   const [editandoIdDesktop, setEditandoIdDesktop] = useState(null);
   const [textoEdicaoDesktop, setTextoEdicaoDesktop] = useState('');
+  const [erroHorarioDesktop, setErroHorarioDesktop] = useState('');
 
   useEffect(() => {
     try {
@@ -457,7 +452,6 @@ export default function ContextsView({
     }
   }, [pastasAbertas]);
 
-  // Mantém caminho válido caso pastas mudem
   useEffect(() => {
     if (pastasPrincipais.length > 0 && !caminhoSelecionado) {
       setCaminhoSelecionado(pastasPrincipais[0].caminhoCompleto);
@@ -474,8 +468,7 @@ export default function ContextsView({
     });
   };
 
-  // Encontra todas as tarefas que pertencem ao caminho selecionado ou subpastas dele
-  const tarefasDoContextoDesktop = tarefas.filter((t) => {
+  const tarefasDoContextoDesktop = tarefasAtivas.filter((t) => {
     const ctx = (t.contexto || 'geral').toLowerCase().trim();
     return ctx === caminhoSelecionado || ctx.startsWith(`${caminhoSelecionado}/`);
   });
@@ -487,12 +480,24 @@ export default function ContextsView({
     const parsed = processarInputRapido(novoTextoDesktop.trim());
     if (!parsed || !parsed.titulo) return;
 
+    const contextoDestino = parsed.contexto !== 'geral' ? parsed.contexto : caminhoSelecionado;
+    const ehContextoAgenda = contextoDestino === 'agenda' || contextoDestino.startsWith('agenda/');
+
+    if (ehContextoAgenda && !parsed.horario) {
+      setErroHorarioDesktop('Informe o horário (ex: às 14h ou @14:30)');
+      setTimeout(() => setErroHorarioDesktop(''), 3500);
+      return;
+    }
+
     adicionarTarefa({
       ...parsed,
-      contexto: parsed.contexto !== 'geral' ? parsed.contexto : caminhoSelecionado,
+      tipo: ehContextoAgenda ? TIPOS_TAREFA.AGENDADO : parsed.tipo,
+      icone: ehContextoAgenda ? 'Clock' : parsed.icone,
+      contexto: contextoDestino,
     });
 
     setNovoTextoDesktop('');
+    setErroHorarioDesktop('');
   };
 
   const iniciarEdicaoDesktop = (tarefa) => {
@@ -523,9 +528,7 @@ export default function ContextsView({
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* ======================================================== */}
-      {/* 1. VISUALIZAÇÃO MOBILE (< lg) - Árvore Sanfonada Atual    */}
-      {/* ======================================================== */}
+      {/* 1. MOBILE (< lg) */}
       <div className="space-y-4 pb-24 overflow-y-auto no-scrollbar lg:hidden">
         <div className={`flex items-center justify-between pb-2 border-b ${THEME.contextos.divisor}`}>
           <div>
@@ -533,14 +536,14 @@ export default function ContextsView({
               Árvore de Contextos
             </h2>
             <p className={`text-[11px] font-medium ${THEME.contextos.cabecalhoSubtitulo}`}>
-              Gerencie pastas, rotinas periódicas e tarefas
+              Gerencie pastas, rotinas e tarefas ativas
             </p>
           </div>
         </div>
 
         {pastasPrincipais.length === 0 ? (
           <div className="text-center py-16 text-zinc-400 text-xs">
-            Nenhum contexto criado ainda. Crie tarefas com #[pasta/subpasta] no topo.
+            Nenhum contexto ativo.
           </div>
         ) : (
           <div className="space-y-2">
@@ -560,24 +563,22 @@ export default function ContextsView({
         )}
       </div>
 
-      {/* ======================================================== */}
-      {/* 2. VISUALIZAÇÃO DESKTOP (lg+) - Painel Mestre-Detalhe      */}
-      {/* ======================================================== */}
+      {/* 2. DESKTOP (lg+) - Painel Mestre-Detalhe em escala de cinzas */}
       <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6 lg:h-full lg:min-h-0">
-        {/* Painel Esquerdo: Árvore Navegadora de Pastas (4 colunas) */}
+        {/* Painel Esquerdo: Pastas (Cinza Neutro) */}
         <div className="lg:col-span-4 flex flex-col h-full min-h-0 border-r border-zinc-200 pr-5">
           <div className="pb-3 mb-2 border-b border-zinc-200 shrink-0">
             <h2 className={`text-xs uppercase tracking-wider font-bold ${THEME.contextos.cabecalhoTitulo}`}>
               Pastas & Contextos
             </h2>
             <p className="text-[11px] text-zinc-500">
-              Selecione uma categoria para visualizar suas tarefas
+              Categorias e diretórios ativos
             </p>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-1 no-scrollbar pr-1">
             {pastasPrincipais.length === 0 ? (
-              <div className="text-zinc-400 text-xs py-8">Nenhuma pasta criada.</div>
+              <div className="text-zinc-400 text-xs py-8">Nenhuma pasta ativa.</div>
             ) : (
               pastasPrincipais.map((no) => (
                 <NoPastaDesktopSidebar
@@ -593,9 +594,8 @@ export default function ContextsView({
           </div>
         </div>
 
-        {/* Painel Direito: Área de Trabalho do Contexto Selecionado (8 colunas) */}
+        {/* Painel Direito: Detalhe com Botão Cinza */}
         <div className="lg:col-span-8 flex flex-col h-full min-h-0 pl-1">
-          {/* Topo do Detalhe: Caminho, Contagem e Input Rápido */}
           <div className="pb-3 mb-3 border-b border-zinc-200 shrink-0">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -610,32 +610,38 @@ export default function ContextsView({
               </span>
             </div>
 
-            {/* Input direto no contexto */}
-            <form onSubmit={handleCriarItemDesktop} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={novoTextoDesktop}
-                onChange={(e) => setNovoTextoDesktop(e.target.value)}
-                placeholder={`Nova ação em "${caminhoSelecionado}"...`}
-                className={`flex-1 rounded-xl px-3 py-1.5 text-xs focus:outline-none bg-white border border-zinc-200 shadow-sm ${THEME.quickInput.borderFocus}`}
-              />
-              <button
-                type="submit"
-                disabled={!novoTextoDesktop.trim()}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 shadow-sm disabled:opacity-30 ${THEME.foco.concluirBtn}`}
-              >
-                <Plus size={13} weight="bold" /> Adicionar
-              </button>
+            <form onSubmit={handleCriarItemDesktop} className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={novoTextoDesktop}
+                  onChange={(e) => {
+                    setNovoTextoDesktop(e.target.value);
+                    if (erroHorarioDesktop) setErroHorarioDesktop('');
+                  }}
+                  placeholder={`Nova ação em "${caminhoSelecionado}"...`}
+                  className={`flex-1 rounded-xl px-3 py-1.5 text-xs focus:outline-none bg-white border border-zinc-200 shadow-sm ${THEME.quickInput.borderFocus}`}
+                />
+                <button
+                  type="submit"
+                  disabled={!novoTextoDesktop.trim()}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 shadow-sm disabled:opacity-30 bg-zinc-800 text-white hover:bg-zinc-900 transition-colors"
+                >
+                  <Plus size={13} weight="bold" /> Adicionar
+                </button>
+              </div>
+              {erroHorarioDesktop && (
+                <span className="text-[11px] text-rose-500 font-semibold px-1">{erroHorarioDesktop}</span>
+              )}
             </form>
           </div>
 
-          {/* Lista de Tarefas do Contexto Selecionado (rolagem restrita ao quadro) */}
           <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-1">
             {tarefasDoContextoDesktop.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center text-zinc-400 text-xs py-16 border border-dashed border-zinc-200 rounded-xl">
-                <p>Nenhuma tarefa cadastrada em #{caminhoSelecionado}.</p>
+                <p>Nenhuma tarefa ativa em #{caminhoSelecionado}.</p>
                 <p className="text-[11px] text-zinc-400 mt-1">
-                  Use o campo acima para adicionar a primeira tarefa nesta pasta.
+                  Use o campo acima para adicionar uma nova tarefa nesta pasta.
                 </p>
               </div>
             ) : (

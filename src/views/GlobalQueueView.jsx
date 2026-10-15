@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CaretUp, CaretDown, Check, Lightning } from '@phosphor-icons/react';
+import { CaretUp, CaretDown, Check, Lightning, ArrowCounterClockwise, CheckCircle } from '@phosphor-icons/react';
 import DynamicIcon from '../components/DynamicIcon';
 import { TIPOS_TAREFA, PRIORIDADES } from '../types';
 import { THEME } from '../colors';
@@ -38,7 +38,6 @@ function ItemFila({
 
   return (
     <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${estiloCard}`}>
-      {/* Lado Esquerdo: Posição, Ícone e Título */}
       <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
         <div className="flex items-center justify-center w-5 font-mono text-xs shrink-0">
           {isPrincipal ? (
@@ -76,7 +75,6 @@ function ItemFila({
         </div>
       </div>
 
-      {/* Lado Direito: Prioridade Cíclica e Controles */}
       <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={() => alternarPrioridade(item.id)}
@@ -84,7 +82,7 @@ function ItemFila({
             item.prioridade,
             item.tipo
           )}`}
-          title="Alternar prioridade (P1, P2, P3)"
+          title="Alternar prioridade"
         >
           {item.prioridade.toUpperCase()}
         </button>
@@ -124,6 +122,43 @@ function ItemFila({
   );
 }
 
+function ItemConcluido({ item, toggleConcluir }) {
+  const formatarHora = (isoStr) => {
+    if (!isoStr) return '';
+    try {
+      const d = new Date(isoStr);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between p-3 rounded-xl border border-zinc-200 bg-zinc-50/70 shadow-sm transition-all">
+      <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
+        <CheckCircle size={18} weight="fill" className="text-zinc-400 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs truncate font-medium text-zinc-400 line-through">
+            {item.titulo}
+          </p>
+          <span className="text-[10px] text-zinc-400 block font-mono">
+            Concluída {formatarHora(item.concluidoEm) ? `às ${formatarHora(item.concluidoEm)}` : ''}
+            {item.contexto ? ` • #${item.contexto}` : ''}
+          </span>
+        </div>
+      </div>
+
+      <button
+        onClick={() => toggleConcluir(item.id)}
+        className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/60 transition-colors shrink-0"
+        title="Desfazer conclusão"
+      >
+        <ArrowCounterClockwise size={14} weight="bold" />
+      </button>
+    </div>
+  );
+}
+
 export default function GlobalQueueView({
   tarefas,
   toggleConcluir,
@@ -131,7 +166,7 @@ export default function GlobalQueueView({
   moverParaBaixo,
   alternarPrioridade,
 }) {
-  const [subAba, setSubAba] = useState('foco'); // usado exclusivamente no mobile
+  const [subAba, setSubAba] = useState('foco'); // 'foco' | 'concluido' | 'rotina'
 
   const filaFoco = tarefas
     .filter((t) => t.tipo === TIPOS_TAREFA.FOCO && !t.concluido)
@@ -140,6 +175,11 @@ export default function GlobalQueueView({
   const filaRotina = tarefas
     .filter((t) => t.tipo === TIPOS_TAREFA.CADENCIA && !t.concluido)
     .sort((a, b) => (a.ordemFila || 0) - (b.ordemFila || 0));
+
+  // Concluídos ordenados decrescente por data de conclusão (mais recentes primeiro)
+  const filaConcluido = tarefas
+    .filter((t) => t.concluido)
+    .sort((a, b) => new Date(b.concluidoEm || 0) - new Date(a.concluidoEm || 0));
 
   const getBadgePrioridade = (p, tipo) => {
     if (tipo === TIPOS_TAREFA.CADENCIA) {
@@ -154,7 +194,7 @@ export default function GlobalQueueView({
 
   return (
     <div className="h-full flex flex-col pb-24 lg:pb-6 overflow-hidden">
-      {/* 1. SELETOR MOBILE (< lg) */}
+      {/* 1. SELETOR MOBILE (< lg) - 3 Sub-abas: Foco | Concluído | Rotina */}
       <div className="flex p-1 bg-zinc-100 rounded-lg border border-zinc-200 mb-3 shrink-0 lg:hidden">
         <button
           onClick={() => setSubAba('foco')}
@@ -165,6 +205,16 @@ export default function GlobalQueueView({
           }`}
         >
           Foco
+        </button>
+        <button
+          onClick={() => setSubAba('concluido')}
+          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${
+            subAba === 'concluido'
+              ? 'bg-white text-zinc-900 shadow-sm border border-zinc-300 font-bold'
+              : 'text-zinc-500 hover:text-zinc-800'
+          }`}
+        >
+          Concluído
         </button>
         <button
           onClick={() => setSubAba('rotina')}
@@ -178,71 +228,104 @@ export default function GlobalQueueView({
         </button>
       </div>
 
-      {/* 2. VISUALIZAÇÃO MOBILE (Uma fila ativa com rolagem) */}
+      {/* 2. VISUALIZAÇÃO MOBILE (Lista ativa) */}
       <div className="flex-1 flex flex-col min-h-0 lg:hidden">
         <div className="flex items-center justify-between pb-1 mb-2 border-b border-zinc-200 shrink-0">
           <div>
-            <h2 className={`text-xs uppercase tracking-wider font-bold ${subAba === 'foco' ? THEME.foco.titulo : THEME.rotina.titulo}`}>
-              {subAba === 'foco' ? 'Fila de Foco' : 'Fila de Rotina'}
+            <h2
+              className={`text-xs uppercase tracking-wider font-bold ${
+                subAba === 'foco'
+                  ? THEME.foco.titulo
+                  : subAba === 'rotina'
+                  ? THEME.rotina.titulo
+                  : 'text-zinc-600'
+              }`}
+            >
+              {subAba === 'foco' && 'Fila de Foco'}
+              {subAba === 'concluido' && 'Tarefas Concluídas'}
+              {subAba === 'rotina' && 'Fila de Rotina'}
             </h2>
-            <p className="text-[11px] text-zinc-500">
-              {subAba === 'foco'
-                ? 'Os 3 primeiros alimentam a tela Hoje em tempo real'
-                : 'Organize os rituais por prioridade de execução'}
-            </p>
           </div>
           <span className="text-xs font-mono font-medium text-zinc-500">
-            {(subAba === 'foco' ? filaFoco : filaRotina).length} tarefas
+            {subAba === 'foco' && `${filaFoco.length} tarefas`}
+            {subAba === 'concluido' && `${filaConcluido.length} concluídas`}
+            {subAba === 'rotina' && `${filaRotina.length} rituais`}
           </span>
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-0.5">
-          {(subAba === 'foco' ? filaFoco : filaRotina).length === 0 ? (
-            <div className="text-center py-16 text-zinc-400 text-xs">
-              {subAba === 'foco' ? 'Nenhuma tarefa na fila de foco.' : 'Nenhuma rotina pendente.'}
-            </div>
-          ) : (
-            (subAba === 'foco' ? filaFoco : filaRotina).map((item, index, arr) => (
-              <ItemFila
-                key={item.id}
-                item={item}
-                index={index}
-                total={arr.length}
-                subAba={subAba}
-                alternarPrioridade={alternarPrioridade}
-                moverParaCima={moverParaCima}
-                moverParaBaixo={moverParaBaixo}
-                toggleConcluir={toggleConcluir}
-                getBadgePrioridade={getBadgePrioridade}
-              />
-            ))
-          )}
+          {subAba === 'foco' &&
+            (filaFoco.length === 0 ? (
+              <div className="text-center py-16 text-zinc-400 text-xs">Nenhuma tarefa na fila de foco.</div>
+            ) : (
+              filaFoco.map((item, index) => (
+                <ItemFila
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  total={filaFoco.length}
+                  subAba="foco"
+                  alternarPrioridade={alternarPrioridade}
+                  moverParaCima={moverParaCima}
+                  moverParaBaixo={moverParaBaixo}
+                  toggleConcluir={toggleConcluir}
+                  getBadgePrioridade={getBadgePrioridade}
+                />
+              ))
+            ))}
+
+          {subAba === 'concluido' &&
+            (filaConcluido.length === 0 ? (
+              <div className="text-center py-16 text-zinc-400 text-xs">Nenhuma tarefa concluída ainda.</div>
+            ) : (
+              filaConcluido.map((item) => (
+                <ItemConcluido key={item.id} item={item} toggleConcluir={toggleConcluir} />
+              ))
+            ))}
+
+          {subAba === 'rotina' &&
+            (filaRotina.length === 0 ? (
+              <div className="text-center py-16 text-zinc-400 text-xs">Nenhuma rotina pendente.</div>
+            ) : (
+              filaRotina.map((item, index) => (
+                <ItemFila
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  total={filaRotina.length}
+                  subAba="rotina"
+                  alternarPrioridade={alternarPrioridade}
+                  moverParaCima={moverParaCima}
+                  moverParaBaixo={moverParaBaixo}
+                  toggleConcluir={toggleConcluir}
+                  getBadgePrioridade={getBadgePrioridade}
+                />
+              ))
+            ))}
         </div>
       </div>
 
-      {/* 3. VISUALIZAÇÃO DESKTOP (2 Colunas Paralelas Lado a Lado: Foco e Rotina) */}
-      <div className="hidden lg:grid lg:grid-cols-2 lg:gap-6 lg:h-full lg:min-h-0">
-        {/* Coluna 1: Fila de Foco */}
-        <div className="flex flex-col h-full min-h-0">
+      {/* 3. VISUALIZAÇÃO DESKTOP (3 Colunas: Foco | Concluído | Rotina) */}
+      <div className="hidden lg:grid lg:grid-cols-3 lg:gap-6 lg:h-full lg:min-h-0">
+        {/* Coluna 1: Fila de Foco (Verde) */}
+        <div className="flex flex-col h-full min-h-0 border-r border-zinc-200 pr-4">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-200 shrink-0">
             <div>
               <h2 className={`text-xs uppercase tracking-wider font-bold ${THEME.foco.titulo}`}>
                 Fila de Foco
               </h2>
               <p className="text-[11px] text-zinc-500">
-                Os 3 primeiros alimentam a tela Hoje em tempo real
+                Os 3 primeiros alimentam a tela Hoje
               </p>
             </div>
             <span className="text-xs font-mono font-medium text-emerald-800">
-              {filaFoco.length} {filaFoco.length === 1 ? 'tarefa' : 'tarefas'}
+              {filaFoco.length}
             </span>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-1">
             {filaFoco.length === 0 ? (
-              <div className="text-center py-16 text-zinc-400 text-xs">
-                Nenhuma tarefa na fila de foco.
-              </div>
+              <div className="text-center py-16 text-zinc-400 text-xs">Nenhuma tarefa na fila de foco.</div>
             ) : (
               filaFoco.map((item, index) => (
                 <ItemFila
@@ -262,7 +345,34 @@ export default function GlobalQueueView({
           </div>
         </div>
 
-        {/* Coluna 2: Fila de Rotina */}
+        {/* Coluna 2: Concluído (Cinza - à esquerda de Rotina) */}
+        <div className="flex flex-col h-full min-h-0 border-r border-zinc-200 pr-4">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-200 shrink-0">
+            <div>
+              <h2 className="text-xs uppercase tracking-wider font-bold text-zinc-600">
+                Concluído
+              </h2>
+              <p className="text-[11px] text-zinc-500">
+                Histórico em ordem de finalização
+              </p>
+            </div>
+            <span className="text-xs font-mono font-medium text-zinc-500">
+              {filaConcluido.length}
+            </span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-1">
+            {filaConcluido.length === 0 ? (
+              <div className="text-center py-16 text-zinc-400 text-xs">Nenhuma tarefa concluída.</div>
+            ) : (
+              filaConcluido.map((item) => (
+                <ItemConcluido key={item.id} item={item} toggleConcluir={toggleConcluir} />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Coluna 3: Fila de Rotina (Violeta) */}
         <div className="flex flex-col h-full min-h-0">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-200 shrink-0">
             <div>
@@ -270,19 +380,17 @@ export default function GlobalQueueView({
                 Fila de Rotina
               </h2>
               <p className="text-[11px] text-zinc-500">
-                Organize a ordem dos rituais por prioridade de execução
+                Precedência dos rituais
               </p>
             </div>
             <span className="text-xs font-mono font-medium text-purple-800">
-              {filaRotina.length} {filaRotina.length === 1 ? 'ritual' : 'rituais'}
+              {filaRotina.length}
             </span>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-1">
             {filaRotina.length === 0 ? (
-              <div className="text-center py-16 text-zinc-400 text-xs">
-                Nenhuma rotina cadastrada.
-              </div>
+              <div className="text-center py-16 text-zinc-400 text-xs">Nenhuma rotina cadastrada.</div>
             ) : (
               filaRotina.map((item, index) => (
                 <ItemFila

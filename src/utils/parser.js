@@ -109,8 +109,8 @@ export function processarInputRapido(textoBruto) {
   let cadencia = null;
   let proximaData = null;
 
-  // 1. Extração de Horário (@14:30 ou @8h)
-  const regexHorario = /@(\d{1,2}(?::\d{2}|h\d{2}|h)?)/i;
+  // 1. Extração de Horário: aceita @14:30, @14h, às 14h, às 14:30, as 14h, as 14:00
+  const regexHorario = /(?:@|\b[àa]s\s+)(\d{1,2}(?::\d{2}|h\d{2}|h)?)/i;
   const matchHorario = texto.match(regexHorario);
   if (matchHorario) {
     let raw = matchHorario[1].toLowerCase().replace('h', ':');
@@ -121,7 +121,7 @@ export function processarInputRapido(textoBruto) {
     tipo = TIPOS_TAREFA.AGENDADO;
   }
 
-  // 2. Extração de Contexto com suporte total a acentos Unicode (#francês, #manutenção)
+  // 2. Extração de Contexto com suporte Unicode (#agenda, #francês, #casa/obra)
   const regexContexto = /#([\p{L}\p{N}\s\-_/]+)(?:\s|$)/u;
   const matchContexto = texto.match(regexContexto);
   if (matchContexto) {
@@ -129,7 +129,12 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchContexto[0], '').trim();
   }
 
-  // 3. Ponto de Início
+  // 3. Se o contexto for 'agenda' ou derivado, classifica como agendado
+  if (contexto === 'agenda' || contexto.startsWith('agenda/')) {
+    tipo = TIPOS_TAREFA.AGENDADO;
+  }
+
+  // 4. Reconhecimento de Ponto de Início
   const regexInicio =
     /\b(?:iniciando(?:\s+no|\s+na)?|a\s+partir\s+de|come[çc]ando(?:\s+no|\s+na)?)\s+(domingo|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[aá]bado)\b/i;
   const matchInicio = texto.match(regexInicio);
@@ -142,7 +147,7 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchInicio[0], '').trim();
   }
 
-  // 4. Reconhecimento de Rotinas
+  // 5. Reconhecimento de Rotinas
   let ehRotina = false;
   let intervaloDias = 7;
 
@@ -222,7 +227,7 @@ export function processarInputRapido(textoBruto) {
     cadencia = { intervaloDias };
   }
 
-  // 5. Ícone
+  // 6. Seleção de Ícone
   let icone = tipo === TIPOS_TAREFA.AGENDADO ? 'Clock' : 'Circle';
   const textoMinusculo = texto.toLowerCase();
   for (const [chave, iconeNome] of Object.entries(MAPA_ICONES)) {
