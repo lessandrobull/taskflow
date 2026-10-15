@@ -2,7 +2,7 @@
  * Transforma uma lista plana de tarefas em uma estrutura de árvore baseada em 'contexto'
  * Exemplo de contexto: "casa/obras externas/pintura"
  */
-export function construirArvoreContextos(tarefas) {
+export function construirArvoreContextos(tarefas = []) {
   const raiz = {
     nome: 'Geral',
     caminhoCompleto: '',
@@ -10,12 +10,20 @@ export function construirArvoreContextos(tarefas) {
     tarefas: [],
   };
 
+  if (!Array.isArray(tarefas)) return raiz;
+
   tarefas.forEach((tarefa) => {
-    const caminho = tarefa.contexto || 'geral';
+    if (!tarefa) return;
+    const caminho = (tarefa.contexto || 'geral').toLowerCase().trim();
     const partes = caminho.split('/').filter(Boolean);
 
     let noAtual = raiz;
     let caminhoAcumulado = '';
+
+    if (partes.length === 0) {
+      raiz.tarefas.push(tarefa);
+      return;
+    }
 
     partes.forEach((parte, index) => {
       caminhoAcumulado = caminhoAcumulado ? `${caminhoAcumulado}/${parte}` : parte;
@@ -31,7 +39,6 @@ export function construirArvoreContextos(tarefas) {
 
       noAtual = noAtual.filhos[parte];
 
-      // Se for a última pasta do caminho, vincula a tarefa a ela
       if (index === partes.length - 1) {
         noAtual.tarefas.push(tarefa);
       }

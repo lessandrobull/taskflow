@@ -78,16 +78,22 @@ function NoPasta({
     setTextoEdicao('');
   };
 
-  const getBadgePrioridade = (p) => {
-    switch (p) {
-      case PRIORIDADES.P1:
-        return THEME.contextos.p1;
-      case PRIORIDADES.P2:
-        return THEME.contextos.p2;
-      default:
-        return THEME.contextos.p3;
+  const getBadgePrioridade = (tarefa) => {
+    const p = tarefa.prioridade;
+    if (tarefa.tipo === TIPOS_TAREFA.CADENCIA) {
+      if (p === PRIORIDADES.P1) return THEME.rotina.p1;
+      if (p === PRIORIDADES.P2) return THEME.rotina.p2;
+      return THEME.rotina.p3;
     }
+    if (p === PRIORIDADES.P1) return THEME.foco.p1;
+    if (p === PRIORIDADES.P2) return THEME.foco.p2;
+    return THEME.foco.p3;
   };
+
+  // Subpastas ordenadas alfabeticamente
+  const subpastasOrdenadas = Object.values(no.filhos).sort((a, b) =>
+    a.nome.localeCompare(b.nome)
+  );
 
   return (
     <div className="space-y-1">
@@ -107,7 +113,7 @@ function NoPasta({
           )}
 
           {aberta ? (
-            <FolderOpen size={16} weight="fill" className={THEME.contextos.pastaAbertaIcone} />
+            <FolderOpen size={16} weight="regular" className={THEME.contextos.pastaAbertaIcone} />
           ) : (
             <Folder size={16} weight="regular" className={THEME.contextos.pastaFechadaIcone} />
           )}
@@ -156,19 +162,27 @@ function NoPasta({
             <div className="space-y-1.5 pr-2">
               {no.tarefas.map((tarefa) => {
                 const ehRotina = tarefa.tipo === TIPOS_TAREFA.CADENCIA;
+                const ehAgendado = tarefa.tipo === TIPOS_TAREFA.AGENDADO;
+
                 const estiloCard = tarefa.concluido
                   ? THEME.contextos.concluidaBg
+                  : ehAgendado
+                  ? `${THEME.contextos.agendaBg} ${THEME.contextos.agendaBorder}`
                   : ehRotina
                   ? `${THEME.contextos.rotinaBg} ${THEME.contextos.rotinaBorder}`
                   : `${THEME.contextos.tarefaBg} ${THEME.contextos.tarefaBorder}`;
 
                 const estiloTexto = tarefa.concluido
                   ? THEME.contextos.concluidaTexto
+                  : ehAgendado
+                  ? THEME.contextos.agendaTexto
                   : ehRotina
                   ? THEME.contextos.rotinaTexto
                   : THEME.contextos.tarefaTexto;
 
-                const estiloIcone = ehRotina
+                const estiloIcone = ehAgendado
+                  ? THEME.contextos.agendaIcone
+                  : ehRotina
                   ? THEME.contextos.rotinaIcone
                   : THEME.contextos.tarefaIcone;
 
@@ -178,8 +192,12 @@ function NoPasta({
                     className={`flex items-center justify-between p-2 rounded-lg border transition-all shadow-sm ${estiloCard}`}
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0 pr-2">
-                      {tarefa.icone && tarefa.icone !== 'Circle' && (
-                        <DynamicIcon name={tarefa.icone} size={15} className={`shrink-0 ${estiloIcone}`} />
+                      {tarefa.icone && (
+                        <DynamicIcon
+                          name={ehAgendado ? (tarefa.icone || 'Clock') : tarefa.icone}
+                          size={15}
+                          className={`shrink-0 ${estiloIcone}`}
+                        />
                       )}
 
                       {editandoId === tarefa.id ? (
@@ -225,12 +243,11 @@ function NoPasta({
 
                     {editandoId !== tarefa.id && (
                       <div className="flex items-center gap-1 shrink-0">
-                        {!tarefa.concluido && !ehRotina && (
+                        {!tarefa.concluido && !ehAgendado && (
                           <button
                             onClick={() => alternarPrioridade(tarefa.id)}
-                            className={`px-1.5 py-0.5 rounded text-[9px] font-mono border uppercase tracking-wider ${getBadgePrioridade(
-                              tarefa.prioridade
-                            )}`}
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-mono border uppercase tracking-wider ${getBadgePrioridade(tarefa)}`}
+                            title="Clique para alternar prioridade"
                           >
                             {tarefa.prioridade}
                           </button>
@@ -261,7 +278,7 @@ function NoPasta({
 
           {temFilhos && (
             <div className="space-y-1 pt-1">
-              {Object.values(no.filhos).map((subNo) => (
+              {subpastasOrdenadas.map((subNo) => (
                 <NoPasta
                   key={subNo.caminhoCompleto}
                   no={subNo}
@@ -306,7 +323,13 @@ export default function ContextsView({
   }, [pastasAbertas]);
 
   const arvore = construirArvoreContextos(tarefas);
-  const pastasPrincipais = Object.values(arvore.filhos);
+
+  // Pasta 'agenda' sempre no topo; demais pastas em ordem alfabética
+  const pastasPrincipais = Object.values(arvore.filhos).sort((a, b) => {
+    if (a.nome === 'agenda') return -1;
+    if (b.nome === 'agenda') return 1;
+    return a.nome.localeCompare(b.nome);
+  });
 
   const togglePasta = (caminho) => {
     setPastasAbertas((prev) => {
@@ -316,10 +339,6 @@ export default function ContextsView({
         [caminho]: !estadoAtual,
       };
     });
-  };
-
-  const handleAdicionarDireto = (dadosTarefa) => {
-    adicionarTarefa(dadosTarefa);
   };
 
   return (
@@ -347,7 +366,7 @@ export default function ContextsView({
               no={no}
               pastasAbertas={pastasAbertas}
               togglePasta={togglePasta}
-              onAdicionarNaPasta={handleAdicionarDireto}
+              onAdicionarNaPasta={adicionarTarefa}
               alternarPrioridade={alternarPrioridade}
               onEditarTarefa={editarTarefa}
               onRemoverTarefa={removerTarefa}
