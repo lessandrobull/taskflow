@@ -48,30 +48,36 @@ export default function NotesView({
 
   return (
     <div className="space-y-4 pb-24">
-      {/* Barra de Seleção de Notas */}
-      <div className={`flex items-center justify-between gap-2 overflow-x-auto pb-2 border-b ${THEME.notas.divisor} no-scrollbar`}>
-        <div className="flex items-center gap-1.5">
-          {notas.map((n) => {
-            const ativa = n.id === notaAtivaId;
-            return (
-              <button
-                key={n.id}
-                onClick={() => setNotaAtivaId(n.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs whitespace-nowrap transition-all border ${
-                  ativa ? THEME.notas.abaAtiva : THEME.notas.abaInativa
-                }`}
-              >
-                <FileText
-                  size={13}
-                  weight={ativa ? 'fill' : 'regular'}
-                  className={ativa ? 'text-amber-700' : 'text-zinc-400'}
-                />
-                <span className="max-w-[100px] truncate">{n.titulo || 'Sem título'}</span>
-              </button>
-            );
-          })}
+      {/* Barra Superior: Abas com rolagem horizontal + Botão '+' FIXO à direita */}
+      <div className={`flex items-center justify-between gap-2 pb-2 border-b ${THEME.notas.divisor}`}>
+        {/* Área de abas com rolagem independente */}
+        <div className="flex-1 overflow-x-auto no-scrollbar py-0.5">
+          <div className="flex items-center gap-1.5">
+            {notas.map((n) => {
+              const ativa = n.id === notaAtivaId;
+              return (
+                <button
+                  key={n.id}
+                  onClick={() => setNotaAtivaId(n.id)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs whitespace-nowrap transition-all border shrink-0 ${
+                    ativa ? THEME.notas.abaAtiva : THEME.notas.abaInativa
+                  }`}
+                >
+                  <FileText
+                    size={13}
+                    weight={ativa ? 'fill' : 'regular'}
+                    className={ativa ? 'text-amber-700' : 'text-zinc-400'}
+                  />
+                  <span className="max-w-[120px] truncate">
+                    {n.titulo.trim() || 'Sem título'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
+        {/* Botão '+' estático, fixado na lateral direita */}
         <button
           onClick={criarNota}
           className={`p-1.5 rounded-lg border transition-colors shrink-0 shadow-sm ${THEME.notas.addBtn}`}
@@ -89,16 +95,16 @@ export default function NotesView({
             value={notaAtiva.titulo}
             onChange={(e) => atualizarNota(notaAtiva.id, { titulo: e.target.value })}
             placeholder="Título da anotação..."
-            className="w-full bg-transparent text-sm font-bold text-zinc-900 placeholder-zinc-400 focus:outline-none"
+            className="flex-1 bg-white border border-zinc-200 focus:border-amber-400 rounded-lg px-3 py-1.5 text-sm font-bold text-zinc-900 placeholder-zinc-400 focus:outline-none shadow-sm transition-colors"
           />
 
           {notas.length > 1 && (
             <button
               onClick={() => removerNota(notaAtiva.id)}
-              className="text-zinc-400 hover:text-rose-600 p-1 transition-colors"
+              className="text-zinc-400 hover:text-rose-600 p-2 rounded-lg hover:bg-zinc-100 transition-colors shrink-0"
               title="Excluir nota"
             >
-              <Trash size={14} />
+              <Trash size={15} />
             </button>
           )}
         </div>

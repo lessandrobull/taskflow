@@ -4,8 +4,8 @@ const STORAGE_KEY = 'taskflow_notas_v1';
 
 const NOTA_PADRAO = [
   {
-    id: 'nota-scratchpad',
-    titulo: 'Scratchpad Geral',
+    id: 'nota-padrao',
+    titulo: 'Notas',
     conteudo: 'Ideias soltas, comandos e rascunhos rápidos:\n\n- Comprar parafusos 6mm #casa/manutencao\n- Revisar endpoints de áudio do app\n- Checar status da entrega',
     atualizadoEm: new Date().toISOString(),
   },
@@ -15,7 +15,14 @@ export function useNotes() {
   const [notas, setNotas] = useState(() => {
     try {
       const salvas = localStorage.getItem(STORAGE_KEY);
-      return salvas ? JSON.parse(salvas) : NOTA_PADRAO;
+      if (salvas) {
+        const parsed = JSON.parse(salvas);
+        // Migração automática de 'Scratchpad Geral' para 'Notas'
+        return parsed.map((n) =>
+          n.titulo === 'Scratchpad Geral' ? { ...n, titulo: 'Notas' } : n
+        );
+      }
+      return NOTA_PADRAO;
     } catch {
       return NOTA_PADRAO;
     }
@@ -34,7 +41,7 @@ export function useNotes() {
   const criarNota = () => {
     const nova = {
       id: `nota-${Date.now()}`,
-      titulo: 'Sem título',
+      titulo: '',
       conteudo: '',
       atualizadoEm: new Date().toISOString(),
     };
