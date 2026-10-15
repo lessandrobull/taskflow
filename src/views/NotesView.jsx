@@ -26,7 +26,7 @@ export default function NotesView({
     onAdicionarTarefa(parsed);
     setLinhaConvertida(idx);
     setMensagemConversao(`Tarefa "${parsed.titulo}" criada na fila.`);
-    
+
     setTimeout(() => {
       setMensagemConversao('');
       setLinhaConvertida(null);
@@ -57,9 +57,9 @@ export default function NotesView({
       {/* ======================================================== */}
       {/* 1. VISUALIZAÇÃO MOBILE (< lg)                            */}
       {/* ======================================================== */}
-      <div className="space-y-4 pb-24 overflow-y-auto no-scrollbar lg:hidden">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden lg:hidden">
         {/* Barra Superior: Abas com rolagem horizontal + Botão '+' FIXO */}
-        <div className={`flex items-center justify-between gap-2 pb-2 border-b ${THEME.notas.divisor}`}>
+        <div className={`flex items-center justify-between gap-2 pb-1.5 border-b ${THEME.notas.divisor} shrink-0`}>
           <div className="flex-1 overflow-x-auto no-scrollbar py-0.5">
             <div className="flex items-center gap-1.5">
               {notas.map((n) => {
@@ -96,7 +96,7 @@ export default function NotesView({
         </div>
 
         {/* Editor da Nota Ativa */}
-        <div className="space-y-3">
+        <div className="shrink-0 mt-2 space-y-1.5">
           <div className="flex items-center justify-between gap-2">
             <input
               type="text"
@@ -109,7 +109,7 @@ export default function NotesView({
             {notas.length > 1 && (
               <button
                 onClick={() => removerNota(notaAtiva.id)}
-                className="text-zinc-400 hover:text-rose-600 p-2 rounded-lg hover:bg-zinc-100 transition-colors shrink-0"
+                className="text-zinc-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-zinc-100 transition-colors shrink-0"
                 title="Excluir nota"
               >
                 <Trash size={15} />
@@ -118,18 +118,18 @@ export default function NotesView({
           </div>
 
           <textarea
-            rows={11}
+            rows={linhasUteis.length > 0 ? 5 : 9}
             value={notaAtiva.conteudo}
             onChange={(e) => atualizarNota(notaAtiva.id, { conteudo: e.target.value })}
             placeholder="Escreva livremente... Use #contexto ou @horario para converter linhas em tarefas abaixo."
-            className={`w-full border rounded-xl p-3 text-xs leading-relaxed font-sans focus:outline-none resize-none transition-colors shadow-sm ${THEME.notas.editorBg} ${THEME.notas.editorBorder} ${THEME.notas.editorTexto} ${THEME.notas.editorPlaceholder}`}
+            className={`w-full border rounded-xl p-2.5 text-xs leading-relaxed font-sans focus:outline-none resize-none transition-colors shadow-sm ${THEME.notas.editorBg} ${THEME.notas.editorBorder} ${THEME.notas.editorTexto} ${THEME.notas.editorPlaceholder}`}
           />
         </div>
 
         {/* Transformar Linha em Tarefa (Mobile) */}
         {linhasUteis.length > 0 && (
-          <div className={`pt-2 border-t ${THEME.notas.divisor} space-y-2`}>
-            <div className="flex items-center justify-between">
+          <div className={`mt-2 pt-1.5 border-t ${THEME.notas.divisor} flex-1 min-h-0 flex flex-col overflow-hidden`}>
+            <div className="flex items-center justify-between mb-1.5 shrink-0">
               <span className={`text-[11px] uppercase tracking-wider font-bold ${THEME.notas.cabecalhoTitulo}`}>
                 Transformar linha em tarefa
               </span>
@@ -140,11 +140,12 @@ export default function NotesView({
               )}
             </div>
 
-            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-              {linhasUteis.slice(0, 5).map((linha, idx) => (
+            {/* Apenas esta lista rola, ocupando todo o espaço até a barra inferior sem barra visível */}
+            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-1.5 pr-0.5 pb-1">
+              {linhasUteis.map((linha, idx) => (
                 <div
                   key={idx}
-                  className={`flex items-center justify-between p-2 rounded-lg border transition-colors group ${THEME.notas.cardLinhaBg} ${THEME.notas.cardLinhaBorder}`}
+                  className={`flex items-center justify-between p-2 rounded-lg border transition-colors group shrink-0 ${THEME.notas.cardLinhaBg} ${THEME.notas.cardLinhaBorder}`}
                 >
                   <span className={`truncate flex-1 mr-2 text-xs font-medium ${THEME.notas.cardLinhaTexto}`}>
                     {linha}
@@ -169,7 +170,6 @@ export default function NotesView({
       <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6 lg:h-full lg:min-h-0">
         {/* Painel Esquerdo: Editor Amplo (7 colunas) */}
         <div className="lg:col-span-7 flex flex-col h-full min-h-0 border-r border-zinc-200 pr-5">
-          {/* Barra de Abas com '+' fixo à direita */}
           <div className={`flex items-center justify-between gap-2 pb-2 mb-3 border-b ${THEME.notas.divisor} shrink-0`}>
             <div className="flex-1 overflow-x-auto no-scrollbar py-0.5">
               <div className="flex items-center gap-1.5">
@@ -206,7 +206,6 @@ export default function NotesView({
             </button>
           </div>
 
-          {/* Campo de Título */}
           <div className="flex items-center gap-2 mb-3 shrink-0">
             <input
               type="text"
@@ -227,7 +226,6 @@ export default function NotesView({
             )}
           </div>
 
-          {/* Textarea Amplo preenchendo toda a altura restante */}
           <div className="flex-1 min-h-0 flex flex-col">
             <textarea
               value={notaAtiva.conteudo}
@@ -238,7 +236,7 @@ export default function NotesView({
           </div>
         </div>
 
-        {/* Painel Direito: Apenas os Botões de Ação Direta (5 colunas) */}
+        {/* Painel Direito: Botões de Ação Direta (5 colunas) */}
         <div className="lg:col-span-5 flex flex-col h-full min-h-0 pl-1">
           <div className="pb-3 mb-3 border-b border-zinc-200 shrink-0">
             <div className="flex items-center justify-between">
@@ -256,7 +254,6 @@ export default function NotesView({
             </p>
           </div>
 
-          {/* Lista de Botões Diretos sem redundância de texto */}
           <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-1">
             {linhasUteis.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center text-zinc-400 text-xs py-16 border border-dashed border-zinc-200 rounded-xl">
