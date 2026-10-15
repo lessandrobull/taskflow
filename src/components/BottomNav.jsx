@@ -6,7 +6,7 @@ export default function BottomNav({ abaAtiva, setAbaAtiva }) {
   const abas = [
     { id: 'hoje', label: 'Hoje', Icone: CalendarBlank },
     { id: 'fila', label: 'Filas', Icone: ListNumbers },
-    { id: 'contextos', label: 'Contextos', Icone: TreeStructure },
+    { id: 'contextos', label: 'Tags', Icone: TreeStructure },
     { id: 'notas', label: 'Notas', Icone: NotePencil },
   ];
 
@@ -19,9 +19,8 @@ export default function BottomNav({ abaAtiva, setAbaAtiva }) {
             <button
               key={id}
               onClick={() => setAbaAtiva(id)}
-              className={`flex flex-col items-center gap-1 transition-colors ${
-                ativo ? THEME.nav.itemAtivo : THEME.nav.itemInativo
-              }`}
+              className={`flex flex-col items-center gap-1 transition-colors ${ativo ? THEME.nav.itemAtivo : THEME.nav.itemInativo
+                }`}
             >
               <Icone size={20} weight={ativo ? 'bold' : 'regular'} />
               <span className="text-[10px] tracking-tight">{label}</span>

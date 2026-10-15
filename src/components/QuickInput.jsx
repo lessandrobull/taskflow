@@ -59,7 +59,7 @@ export default function QuickInput({ onAdicionar }) {
 
         {/* Placeholder translúcido suave */}
         {!texto && (
-          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs gap-1 select-none">
+          <div className="absolute inset-y-0 left-2.5 flex items-center pointer-events-none text-xs gap-1 select-none">
             {erroAgenda ? (
               <span className="text-rose-500 font-semibold">{erroAgenda}</span>
             ) : (
