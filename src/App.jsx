@@ -38,7 +38,7 @@ export default function App() {
         <div className="max-w-md mx-auto flex items-center gap-3">
           <span className={`font-bold text-sm tracking-tight ${THEME.app.headerTitle}`}>
             {abaAtiva === 'hoje' && 'Hoje'}
-            {abaAtiva === 'fila' && 'Fila Global'}
+            {abaAtiva === 'fila' && 'Filas'}
             {abaAtiva === 'contextos' && 'Contextos'}
             {abaAtiva === 'notas' && 'Notas'}
           </span>
