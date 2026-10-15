@@ -54,7 +54,7 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
     return false;
   };
 
-  // 1. Agenda: compromissos pendentes com horário no dia
+  // 1. Agenda: compromissos do dia com horário
   const agendadosTarefas = tarefas
     .filter((t) => {
       if (t.tipo !== TIPOS_TAREFA.AGENDADO) return false;
@@ -63,7 +63,7 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
     })
     .sort((a, b) => (a.horario || '').localeCompare(b.horario || ''));
 
-  // 2. Rotina: ativadas hoje e ordenadas estritamente pela ordem manual da Fila de Rotina
+  // 2. Rotina: ativadas hoje e ordenadas estritamente pela Fila de Rotina
   const rotinaTarefas = tarefas
     .filter((t) => {
       if (t.tipo !== TIPOS_TAREFA.CADENCIA || t.concluido) return false;
@@ -173,20 +173,27 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
           </span>
         </div>
 
-        {/* Card Principal */}
+        {/* Card Principal de Foco */}
         {cardPrincipal ? (
-          <div className={`flex-1 min-h-0 lg:flex-none lg:shrink-0 p-4 rounded-xl border shadow-sm flex flex-col justify-between ${THEME.foco.principalBg} ${THEME.foco.principalBorder}`}>
-            <div className="flex items-start gap-3 mb-3">
-              <DynamicIcon name={cardPrincipal.icone} size={22} weight="bold" className={`mt-0.5 shrink-0 ${THEME.foco.principalIcone}`} />
-              <div className="flex-1 min-w-0">
-                <h3 className={`text-base font-bold leading-snug break-words ${THEME.foco.principalTexto}`}>
-                  {cardPrincipal.titulo}
-                </h3>
-              </div>
+          <div className={`p-4 rounded-xl border shadow-sm flex flex-col justify-between ${THEME.foco.principalBg} ${THEME.foco.principalBorder}`}>
+            {/* Topo do Card: Número 1, Ícone e Título com alinhamento vertical */}
+            <div className="flex items-center gap-2.5">
+              <span className="font-mono font-bold text-sm text-emerald-800 shrink-0">
+                1.
+              </span>
+              <DynamicIcon
+                name={cardPrincipal.icone}
+                size={19}
+                weight="bold"
+                className={`shrink-0 ${THEME.foco.principalIcone}`}
+              />
+              <h3 className={`text-sm font-bold leading-normal truncate flex-1 min-w-0 ${THEME.foco.principalTexto}`}>
+                {cardPrincipal.titulo}
+              </h3>
             </div>
 
-            {/* Botoes invertidos: Pular para depois à esquerda, Concluir à direita */}
-            <div className={`flex items-center justify-between pt-2 border-t ${THEME.foco.principalDivisor}`}>
+            {/* Rodapé do Card: Divisória centralizada e Botões com espaçamento */}
+            <div className={`flex items-center justify-between pt-3 pb-0.5 mt-3.5 border-t ${THEME.foco.principalDivisor}`}>
               <button
                 onClick={() => pularParaDepois(cardPrincipal.id)}
                 className={`flex items-center gap-1.5 text-xs transition-colors font-medium ${THEME.foco.pularBtn}`}
@@ -198,15 +205,15 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
 
               <button
                 onClick={() => toggleConcluir(cardPrincipal.id)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow ${THEME.foco.concluirBtn}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${THEME.foco.concluirBtn}`}
               >
-                <CheckCircle size={16} weight="bold" />
+                <CheckCircle size={15} weight="bold" />
                 Concluir
               </button>
             </div>
           </div>
         ) : (
-          <div className={`flex-1 min-h-0 lg:flex-none p-4 rounded-xl border border-dashed flex items-center justify-center text-center text-xs ${THEME.foco.vazioBg}`}>
+          <div className={`p-4 rounded-xl border border-dashed flex items-center justify-center text-center text-xs ${THEME.foco.vazioBg}`}>
             Nenhuma tarefa na fila de foco para hoje.
           </div>
         )}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CaretUp, CaretDown, Check, Lightning, ArrowCounterClockwise, CheckCircle } from '@phosphor-icons/react';
+import { CaretUp, CaretDown, Check, Lightning, ArrowCounterClockwise, CheckCircle, Trash } from '@phosphor-icons/react';
 import DynamicIcon from '../components/DynamicIcon';
 import { TIPOS_TAREFA, PRIORIDADES } from '../types';
 import { THEME } from '../colors';
@@ -122,7 +122,7 @@ function ItemFila({
   );
 }
 
-function ItemConcluido({ item, toggleConcluir }) {
+function ItemConcluido({ item, toggleConcluir, removerTarefa }) {
   const formatarHora = (isoStr) => {
     if (!isoStr) return '';
     try {
@@ -148,13 +148,23 @@ function ItemConcluido({ item, toggleConcluir }) {
         </div>
       </div>
 
-      <button
-        onClick={() => toggleConcluir(item.id)}
-        className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/60 transition-colors shrink-0"
-        title="Desfazer conclusão"
-      >
-        <ArrowCounterClockwise size={14} weight="bold" />
-      </button>
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          onClick={() => toggleConcluir(item.id)}
+          className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/60 transition-colors"
+          title="Desfazer conclusão"
+        >
+          <ArrowCounterClockwise size={14} weight="bold" />
+        </button>
+
+        <button
+          onClick={() => removerTarefa(item.id)}
+          className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+          title="Excluir permanentemente"
+        >
+          <Trash size={14} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -165,6 +175,8 @@ export default function GlobalQueueView({
   moverParaCima,
   moverParaBaixo,
   alternarPrioridade,
+  removerTarefa,
+  limparConcluidos,
 }) {
   const [subAba, setSubAba] = useState('foco'); // 'foco' | 'rotina' | 'concluido'
 
@@ -193,7 +205,7 @@ export default function GlobalQueueView({
 
   return (
     <div className="h-full flex flex-col pb-24 lg:pb-6 overflow-hidden">
-      {/* 1. SELETOR MOBILE (< lg): Foco | Rotina | Concluído */}
+      {/* 1. SELETOR MOBILE (< lg) */}
       <div className="flex p-1 bg-zinc-100 rounded-lg border border-zinc-200 mb-3 shrink-0 lg:hidden">
         <button
           onClick={() => setSubAba('foco')}
@@ -227,7 +239,7 @@ export default function GlobalQueueView({
         </button>
       </div>
 
-      {/* 2. VISUALIZAÇÃO MOBILE (Lista da sub-aba ativa) */}
+      {/* 2. VISUALIZAÇÃO MOBILE */}
       <div className="flex-1 flex flex-col min-h-0 lg:hidden">
         <div className="flex items-center justify-between pb-1 mb-2 border-b border-zinc-200 shrink-0">
           <div>
@@ -245,11 +257,24 @@ export default function GlobalQueueView({
               {subAba === 'concluido' && 'Tarefas Concluídas'}
             </h2>
           </div>
-          <span className="text-xs font-mono font-medium text-zinc-500">
-            {subAba === 'foco' && `${filaFoco.length} tarefas`}
-            {subAba === 'rotina' && `${filaRotina.length} rituais`}
-            {subAba === 'concluido' && `${filaConcluido.length} concluídas`}
-          </span>
+
+          <div className="flex items-center gap-2">
+            {subAba === 'concluido' && filaConcluido.length > 0 && (
+              <button
+                onClick={limparConcluidos}
+                className="text-[11px] text-zinc-400 hover:text-rose-600 transition-colors flex items-center gap-1 font-medium"
+                title="Limpar todas as concluídas"
+              >
+                <Trash size={12} />
+                <span>Limpar</span>
+              </button>
+            )}
+            <span className="text-xs font-mono font-medium text-zinc-500">
+              {subAba === 'foco' && `${filaFoco.length} tarefas`}
+              {subAba === 'rotina' && `${filaRotina.length} rituais`}
+              {subAba === 'concluido' && `${filaConcluido.length} concluídas`}
+            </span>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-0.5">
@@ -298,15 +323,20 @@ export default function GlobalQueueView({
               <div className="text-center py-16 text-zinc-400 text-xs">Nenhuma tarefa concluída ainda.</div>
             ) : (
               filaConcluido.map((item) => (
-                <ItemConcluido key={item.id} item={item} toggleConcluir={toggleConcluir} />
+                <ItemConcluido
+                  key={item.id}
+                  item={item}
+                  toggleConcluir={toggleConcluir}
+                  removerTarefa={removerTarefa}
+                />
               ))
             ))}
         </div>
       </div>
 
-      {/* 3. VISUALIZAÇÃO DESKTOP: Coluna 1 Foco | Coluna 2 Rotina | Coluna 3 Concluído */}
+      {/* 3. VISUALIZAÇÃO DESKTOP: 3 Colunas (Foco | Rotina | Concluído) */}
       <div className="hidden lg:grid lg:grid-cols-3 lg:gap-6 lg:h-full lg:min-h-0">
-        {/* Coluna 1: Fila de Foco (Verde) */}
+        {/* Coluna 1: Fila de Foco */}
         <div className="flex flex-col h-full min-h-0 border-r border-zinc-200 pr-4">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-200 shrink-0">
             <div>
@@ -344,7 +374,7 @@ export default function GlobalQueueView({
           </div>
         </div>
 
-        {/* Coluna 2: Fila de Rotina (Violeta - no meio) */}
+        {/* Coluna 2: Fila de Rotina */}
         <div className="flex flex-col h-full min-h-0 border-r border-zinc-200 pr-4">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-200 shrink-0">
             <div>
@@ -382,7 +412,7 @@ export default function GlobalQueueView({
           </div>
         </div>
 
-        {/* Coluna 3: Concluído (Cinza - à direita de Rotina) */}
+        {/* Coluna 3: Concluído (com Limpeza Geral e Exclusão Individual) */}
         <div className="flex flex-col h-full min-h-0">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-200 shrink-0">
             <div>
@@ -393,9 +423,22 @@ export default function GlobalQueueView({
                 Histórico em ordem de finalização
               </p>
             </div>
-            <span className="text-xs font-mono font-medium text-zinc-500">
-              {filaConcluido.length}
-            </span>
+
+            <div className="flex items-center gap-2">
+              {filaConcluido.length > 0 && (
+                <button
+                  onClick={limparConcluidos}
+                  className="text-[11px] text-zinc-400 hover:text-rose-600 transition-colors flex items-center gap-1 font-medium hover:underline"
+                  title="Limpar todas as concluídas"
+                >
+                  <Trash size={12} />
+                  <span>Limpar</span>
+                </button>
+              )}
+              <span className="text-xs font-mono font-medium text-zinc-500">
+                {filaConcluido.length}
+              </span>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-1">
@@ -403,7 +446,12 @@ export default function GlobalQueueView({
               <div className="text-center py-16 text-zinc-400 text-xs">Nenhuma tarefa concluída.</div>
             ) : (
               filaConcluido.map((item) => (
-                <ItemConcluido key={item.id} item={item} toggleConcluir={toggleConcluir} />
+                <ItemConcluido
+                  key={item.id}
+                  item={item}
+                  toggleConcluir={toggleConcluir}
+                  removerTarefa={removerTarefa}
+                />
               ))
             )}
           </div>

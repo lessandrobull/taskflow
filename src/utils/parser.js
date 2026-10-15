@@ -6,6 +6,14 @@ const MAPA_ICONES = {
   ensino: 'ChalkboardTeacher',
   class: 'ChalkboardTeacher',
 
+  medico: 'FirstAid',
+  médico: 'FirstAid',
+  dentista: 'FirstAid',
+  consulta: 'FirstAid',
+  hospital: 'FirstAid',
+  remedio: 'Pill',
+  remédio: 'Pill',
+
   limpeza: 'Broom',
   limpar: 'Broom',
   pano: 'Broom',
@@ -23,8 +31,6 @@ const MAPA_ICONES = {
   corrida: 'PersonSimpleRun',
   correr: 'PersonSimpleRun',
   agua: 'Drop',
-  remédio: 'Pill',
-  remedio: 'Pill',
   meditar: 'Heartbeat',
 
   pc: 'Cpu',
@@ -109,8 +115,8 @@ export function processarInputRapido(textoBruto) {
   let cadencia = null;
   let proximaData = null;
 
-  // 1. Extração de Horário: aceita @14:30, @14h, às 14h, às 14:30, as 14h, as 14:00
-  const regexHorario = /(?:@|\b[àa]s\s+)(\d{1,2}(?::\d{2}|h\d{2}|h)?)/i;
+  // 1. Extração de Horário (@14h, às 14h, as 14:30)
+  const regexHorario = /(?:@|(?:^|\s)[àa]s\s*)(\d{1,2}(?::\d{2}|h\d{2}|h)?)/i;
   const matchHorario = texto.match(regexHorario);
   if (matchHorario) {
     let raw = matchHorario[1].toLowerCase().replace('h', ':');
@@ -121,7 +127,25 @@ export function processarInputRapido(textoBruto) {
     tipo = TIPOS_TAREFA.AGENDADO;
   }
 
-  // 2. Extração de Contexto com suporte Unicode (#agenda, #francês, #casa/obra)
+  // 2. Extração de Data Brasileira: "dia 15/10", "15/10", "15/10/2026"
+  const regexDataBr = /(?:^|\s)(?:dia\s+)?(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?(?=\s|$)/i;
+  const matchDataBr = texto.match(regexDataBr);
+  if (matchDataBr) {
+    const d = String(matchDataBr[1]).padStart(2, '0');
+    const m = String(matchDataBr[2]).padStart(2, '0');
+    const anoAtual = new Date().getFullYear();
+    const anoStr = matchDataBr[3]
+      ? (matchDataBr[3].length === 2 ? `20${matchDataBr[3]}` : matchDataBr[3])
+      : String(anoAtual);
+
+    proximaData = `${anoStr}-${m}-${d}`;
+    texto = texto.replace(matchDataBr[0], '').trim();
+    if (horario) {
+      tipo = TIPOS_TAREFA.AGENDADO;
+    }
+  }
+
+  // 3. Extração de Contexto Unicode (#agenda, #francês, #casa/jardim)
   const regexContexto = /#([\p{L}\p{N}\s\-_/]+)(?:\s|$)/u;
   const matchContexto = texto.match(regexContexto);
   if (matchContexto) {
@@ -129,12 +153,11 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchContexto[0], '').trim();
   }
 
-  // 3. Se o contexto for 'agenda' ou derivado, classifica como agendado
   if (contexto === 'agenda' || contexto.startsWith('agenda/')) {
     tipo = TIPOS_TAREFA.AGENDADO;
   }
 
-  // 4. Reconhecimento de Ponto de Início
+  // 4. Reconhecimento de Ponto de Início por dia da semana
   const regexInicio =
     /\b(?:iniciando(?:\s+no|\s+na)?|a\s+partir\s+de|come[çc]ando(?:\s+no|\s+na)?)\s+(domingo|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[aá]bado)\b/i;
   const matchInicio = texto.match(regexInicio);
@@ -225,6 +248,11 @@ export function processarInputRapido(textoBruto) {
       proximaData = formatarDataISO(new Date());
     }
     cadencia = { intervaloDias };
+  }
+
+  // REGRA: Se tem horário e não é rotina periódica, e nenhum contexto foi explicitado (#), vai direto para 'agenda'
+  if (!ehRotina && tipo === TIPOS_TAREFA.AGENDADO && contexto === 'geral') {
+    contexto = 'agenda';
   }
 
   // 6. Seleção de Ícone

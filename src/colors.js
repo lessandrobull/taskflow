@@ -54,12 +54,12 @@ export const THEME = {
   // Bloco 3: Foco (Verde Esmeralda)
   foco: {
     titulo: 'text-emerald-800',
-    principalBg: 'bg-emerald-50',
-    principalBorder: 'border-emerald-200',
-    principalIcone: 'text-emerald-700',
+    principalBg: 'bg-emerald-50/70',
+    principalBorder: 'border-emerald-300/80',
+    principalIcone: 'text-emerald-800',
     principalTexto: 'text-zinc-900',
-    principalDivisor: 'border-emerald-200/80',
-    concluirBtn: 'bg-emerald-800 text-emerald-50 hover:bg-emerald-900',
+    principalDivisor: 'border-emerald-200',
+    concluirBtn: 'bg-[#45818e] text-white hover:bg-[#386b76] border border-[#386b76]/80 shadow-sm',
     pularBtn: 'text-zinc-500 hover:text-zinc-800',
     vazioBg: 'bg-zinc-50 border-zinc-300 text-zinc-500',
     radarTitulo: 'text-zinc-500',

@@ -215,6 +215,17 @@ export function useTasks() {
     })();
   };
 
+  const limparConcluidos = () => {
+    setTarefas((prev) => prev.filter((t) => !t.concluido));
+    (async () => {
+      try {
+        await supabase.from('tarefas').delete().eq('concluido', true);
+      } catch (e) {
+        console.error('Falha ao limpar concluidas no Supabase:', e);
+      }
+    })();
+  };
+
   const editarTarefa = (id, novosDados) => {
     const itemAtual = tarefas.find((t) => t.id === id);
     if (!itemAtual) return;
@@ -373,6 +384,7 @@ export function useTasks() {
     toggleConcluir,
     pularParaDepois,
     removerTarefa,
+    limparConcluidos,
     editarTarefa,
     moverParaCima,
     moverParaBaixo,

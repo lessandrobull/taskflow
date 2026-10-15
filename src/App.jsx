@@ -16,6 +16,7 @@ export default function App() {
     toggleConcluir,
     pularParaDepois,
     removerTarefa,
+    limparConcluidos,
     editarTarefa,
     moverParaCima,
     moverParaBaixo,
@@ -35,7 +36,6 @@ export default function App() {
 
   return (
     <div className={`h-dvh flex flex-col font-sans overflow-hidden ${THEME.app.bg} ${THEME.app.text}`}>
-      {/* Header Responsivo */}
       <header className={`sticky top-0 z-10 border-b px-4 py-2.5 shrink-0 ${THEME.app.headerBg} ${THEME.app.headerBorder}`}>
         <div className="max-w-md lg:max-w-6xl xl:max-w-7xl mx-auto flex items-center gap-3">
           <span className={`font-bold text-sm tracking-tight ${THEME.app.headerTitle}`}>
@@ -48,7 +48,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Responsivo */}
       <main
         className={`flex-1 max-w-md lg:max-w-6xl xl:max-w-7xl w-full mx-auto px-4 pt-3 pb-16 flex flex-col min-h-0 ${
           abaAtiva === 'hoje' ? 'overflow-hidden' : 'overflow-y-auto'
@@ -68,6 +67,8 @@ export default function App() {
             moverParaCima={moverParaCima}
             moverParaBaixo={moverParaBaixo}
             alternarPrioridade={alternarPrioridade}
+            removerTarefa={removerTarefa}
+            limparConcluidos={limparConcluidos}
           />
         )}
         {abaAtiva === 'contextos' && (
