@@ -9,6 +9,7 @@ import {
   PencilSimple,
   Trash,
   X,
+  Tag,
 } from '@phosphor-icons/react';
 import DynamicIcon from '../components/DynamicIcon';
 import { processarInputRapido } from '../utils/parser';
@@ -18,7 +19,144 @@ import { THEME } from '../colors';
 
 const PASTAS_STORAGE_KEY = 'taskflow_pastas_abertas_v1';
 
-function NoPasta({
+// Card de Tarefa individual reutilizado no Mobile e no Desktop
+function CardTarefaContexto({
+  tarefa,
+  editandoId,
+  textoEdicao,
+  setTextoEdicao,
+  setEditandoId,
+  iniciarEdicao,
+  salvarEdicao,
+  alternarPrioridade,
+  onRemoverTarefa,
+}) {
+  const ehRotina = tarefa.tipo === TIPOS_TAREFA.CADENCIA;
+  const ehAgendado = tarefa.tipo === TIPOS_TAREFA.AGENDADO;
+
+  const estiloCard = tarefa.concluido
+    ? THEME.contextos.concluidaBg
+    : ehAgendado
+    ? `${THEME.contextos.agendaBg} ${THEME.contextos.agendaBorder}`
+    : ehRotina
+    ? `${THEME.contextos.rotinaBg} ${THEME.contextos.rotinaBorder}`
+    : `${THEME.contextos.tarefaBg} ${THEME.contextos.tarefaBorder}`;
+
+  const estiloTexto = tarefa.concluido
+    ? THEME.contextos.concluidaTexto
+    : ehAgendado
+    ? THEME.contextos.agendaTexto
+    : ehRotina
+    ? THEME.contextos.rotinaTexto
+    : THEME.contextos.tarefaTexto;
+
+  const estiloIcone = ehAgendado
+    ? THEME.contextos.agendaIcone
+    : ehRotina
+    ? THEME.contextos.rotinaIcone
+    : THEME.contextos.tarefaIcone;
+
+  const getBadgePrioridade = (t) => {
+    const p = t.prioridade;
+    if (t.tipo === TIPOS_TAREFA.CADENCIA) {
+      if (p === PRIORIDADES.P1) return THEME.rotina.p1;
+      if (p === PRIORIDADES.P2) return THEME.rotina.p2;
+      return THEME.rotina.p3;
+    }
+    if (p === PRIORIDADES.P1) return THEME.foco.p1;
+    if (p === PRIORIDADES.P2) return THEME.foco.p2;
+    return THEME.foco.p3;
+  };
+
+  return (
+    <div className={`flex items-center justify-between p-2.5 rounded-xl border transition-all shadow-sm ${estiloCard}`}>
+      <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+        {tarefa.icone && (
+          <DynamicIcon
+            name={ehAgendado ? (tarefa.icone || 'Clock') : tarefa.icone}
+            size={16}
+            className={`shrink-0 ${estiloIcone}`}
+          />
+        )}
+
+        {editandoId === tarefa.id ? (
+          <div className="flex items-center gap-1 flex-1">
+            <input
+              type="text"
+              autoFocus
+              value={textoEdicao}
+              onChange={(e) => setTextoEdicao(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') salvarEdicao(tarefa.id);
+                if (e.key === 'Escape') setEditandoId(null);
+              }}
+              className={`flex-1 rounded px-2 py-0.5 text-xs border focus:outline-none bg-white text-zinc-900 ${THEME.quickInput.border}`}
+            />
+            <button
+              onClick={() => salvarEdicao(tarefa.id)}
+              className="p-1 text-emerald-600 hover:text-emerald-700"
+              title="Salvar edição"
+            >
+              <Check size={13} weight="bold" />
+            </button>
+            <button
+              onClick={() => setEditandoId(null)}
+              className="p-1 text-zinc-400 hover:text-zinc-700"
+              title="Cancelar edição"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        ) : (
+          <span className={`text-xs truncate font-medium ${estiloTexto}`}>
+            {tarefa.titulo}
+          </span>
+        )}
+
+        {tarefa.horario && (
+          <span className={`text-[10px] font-mono shrink-0 ${THEME.contextos.horarioTexto}`}>
+            @{tarefa.horario}
+          </span>
+        )}
+      </div>
+
+      {editandoId !== tarefa.id && (
+        <div className="flex items-center gap-1 shrink-0">
+          {!tarefa.concluido && !ehAgendado && (
+            <button
+              onClick={() => alternarPrioridade(tarefa.id)}
+              className={`px-1.5 py-0.5 rounded text-[9px] font-mono border uppercase tracking-wider ${getBadgePrioridade(tarefa)}`}
+              title="Alternar prioridade"
+            >
+              {tarefa.prioridade}
+            </button>
+          )}
+
+          <button
+            onClick={() => iniciarEdicao(tarefa)}
+            className={`p-1 transition-colors ${THEME.contextos.editarBtn}`}
+            title="Editar tarefa"
+          >
+            <PencilSimple size={13} />
+          </button>
+
+          <button
+            onClick={() => onRemoverTarefa(tarefa.id)}
+            className={`p-1 transition-colors ${THEME.contextos.excluirBtn}`}
+            title="Excluir tarefa"
+          >
+            <Trash size={13} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ----------------------------------------------------
+// NÓ EM ÁRVORE RECURSIVO (USADO NO MOBILE)
+// ----------------------------------------------------
+function NoPastaMobile({
   no,
   pastasAbertas,
   togglePasta,
@@ -78,19 +216,6 @@ function NoPasta({
     setTextoEdicao('');
   };
 
-  const getBadgePrioridade = (tarefa) => {
-    const p = tarefa.prioridade;
-    if (tarefa.tipo === TIPOS_TAREFA.CADENCIA) {
-      if (p === PRIORIDADES.P1) return THEME.rotina.p1;
-      if (p === PRIORIDADES.P2) return THEME.rotina.p2;
-      return THEME.rotina.p3;
-    }
-    if (p === PRIORIDADES.P1) return THEME.foco.p1;
-    if (p === PRIORIDADES.P2) return THEME.foco.p2;
-    return THEME.foco.p3;
-  };
-
-  // Subpastas ordenadas alfabeticamente
   const subpastasOrdenadas = Object.values(no.filhos).sort((a, b) =>
     a.nome.localeCompare(b.nome)
   );
@@ -160,126 +285,27 @@ function NoPasta({
 
           {temTarefas && (
             <div className="space-y-1.5 pr-2">
-              {no.tarefas.map((tarefa) => {
-                const ehRotina = tarefa.tipo === TIPOS_TAREFA.CADENCIA;
-                const ehAgendado = tarefa.tipo === TIPOS_TAREFA.AGENDADO;
-
-                const estiloCard = tarefa.concluido
-                  ? THEME.contextos.concluidaBg
-                  : ehAgendado
-                  ? `${THEME.contextos.agendaBg} ${THEME.contextos.agendaBorder}`
-                  : ehRotina
-                  ? `${THEME.contextos.rotinaBg} ${THEME.contextos.rotinaBorder}`
-                  : `${THEME.contextos.tarefaBg} ${THEME.contextos.tarefaBorder}`;
-
-                const estiloTexto = tarefa.concluido
-                  ? THEME.contextos.concluidaTexto
-                  : ehAgendado
-                  ? THEME.contextos.agendaTexto
-                  : ehRotina
-                  ? THEME.contextos.rotinaTexto
-                  : THEME.contextos.tarefaTexto;
-
-                const estiloIcone = ehAgendado
-                  ? THEME.contextos.agendaIcone
-                  : ehRotina
-                  ? THEME.contextos.rotinaIcone
-                  : THEME.contextos.tarefaIcone;
-
-                return (
-                  <div
-                    key={tarefa.id}
-                    className={`flex items-center justify-between p-2 rounded-lg border transition-all shadow-sm ${estiloCard}`}
-                  >
-                    <div className="flex items-center gap-2 flex-1 min-w-0 pr-2">
-                      {tarefa.icone && (
-                        <DynamicIcon
-                          name={ehAgendado ? (tarefa.icone || 'Clock') : tarefa.icone}
-                          size={15}
-                          className={`shrink-0 ${estiloIcone}`}
-                        />
-                      )}
-
-                      {editandoId === tarefa.id ? (
-                        <div className="flex items-center gap-1 flex-1">
-                          <input
-                            type="text"
-                            autoFocus
-                            value={textoEdicao}
-                            onChange={(e) => setTextoEdicao(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') salvarEdicao(tarefa.id);
-                              if (e.key === 'Escape') setEditandoId(null);
-                            }}
-                            className={`flex-1 rounded px-1.5 py-0.5 text-xs border focus:outline-none ${THEME.contextos.tarefaBg} ${THEME.contextos.tarefaTexto} ${THEME.quickInput.border}`}
-                          />
-                          <button
-                            onClick={() => salvarEdicao(tarefa.id)}
-                            className="p-1 text-emerald-600 hover:text-emerald-700"
-                            title="Salvar edição"
-                          >
-                            <Check size={13} weight="bold" />
-                          </button>
-                          <button
-                            onClick={() => setEditandoId(null)}
-                            className="p-1 text-zinc-400 hover:text-zinc-700"
-                            title="Cancelar edição"
-                          >
-                            <X size={13} />
-                          </button>
-                        </div>
-                      ) : (
-                        <span className={`text-xs truncate font-medium ${estiloTexto}`}>
-                          {tarefa.titulo}
-                        </span>
-                      )}
-
-                      {tarefa.horario && (
-                        <span className={`text-[10px] font-mono shrink-0 ${THEME.contextos.horarioTexto}`}>
-                          @{tarefa.horario}
-                        </span>
-                      )}
-                    </div>
-
-                    {editandoId !== tarefa.id && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        {!tarefa.concluido && !ehAgendado && (
-                          <button
-                            onClick={() => alternarPrioridade(tarefa.id)}
-                            className={`px-1.5 py-0.5 rounded text-[9px] font-mono border uppercase tracking-wider ${getBadgePrioridade(tarefa)}`}
-                            title="Clique para alternar prioridade"
-                          >
-                            {tarefa.prioridade}
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() => iniciarEdicao(tarefa)}
-                          className={`p-1 transition-colors ${THEME.contextos.editarBtn}`}
-                          title="Editar tarefa"
-                        >
-                          <PencilSimple size={13} />
-                        </button>
-
-                        <button
-                          onClick={() => onRemoverTarefa(tarefa.id)}
-                          className={`p-1 transition-colors ${THEME.contextos.excluirBtn}`}
-                          title="Excluir tarefa"
-                        >
-                          <Trash size={13} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {no.tarefas.map((tarefa) => (
+                <CardTarefaContexto
+                  key={tarefa.id}
+                  tarefa={tarefa}
+                  editandoId={editandoId}
+                  textoEdicao={textoEdicao}
+                  setTextoEdicao={setTextoEdicao}
+                  setEditandoId={setEditandoId}
+                  iniciarEdicao={iniciarEdicao}
+                  salvarEdicao={salvarEdicao}
+                  alternarPrioridade={alternarPrioridade}
+                  onRemoverTarefa={onRemoverTarefa}
+                />
+              ))}
             </div>
           )}
 
           {temFilhos && (
             <div className="space-y-1 pt-1">
               {subpastasOrdenadas.map((subNo) => (
-                <NoPasta
+                <NoPastaMobile
                   key={subNo.caminhoCompleto}
                   no={subNo}
                   pastasAbertas={pastasAbertas}
@@ -298,6 +324,96 @@ function NoPasta({
   );
 }
 
+// ----------------------------------------------------
+// NÓ EM ÁRVORE APENAS DE NAVEGAÇÃO (USADO NO DESKTOP)
+// ----------------------------------------------------
+function NoPastaDesktopSidebar({
+  no,
+  caminhoSelecionado,
+  setCaminhoSelecionado,
+  pastasAbertas,
+  togglePasta,
+}) {
+  const temFilhos = Object.keys(no.filhos).length > 0;
+  const aberta = pastasAbertas[no.caminhoCompleto] ?? true;
+  const selecionada = caminhoSelecionado === no.caminhoCompleto;
+
+  const subpastasOrdenadas = Object.values(no.filhos).sort((a, b) =>
+    a.nome.localeCompare(b.nome)
+  );
+
+  return (
+    <div className="space-y-0.5">
+      <div
+        className={`flex items-center justify-between py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${
+          selecionada
+            ? 'bg-zinc-100 text-zinc-950 font-bold border border-zinc-200'
+            : 'hover:bg-zinc-50 text-zinc-700'
+        }`}
+        onClick={() => setCaminhoSelecionado(no.caminhoCompleto)}
+      >
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {temFilhos ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePasta(no.caminhoCompleto);
+              }}
+              className="p-0.5 text-zinc-400 hover:text-zinc-700"
+            >
+              {aberta ? (
+                <CaretDown size={11} weight="bold" />
+              ) : (
+                <CaretRight size={11} weight="bold" />
+              )}
+            </button>
+          ) : (
+            <span className="w-2.5" />
+          )}
+
+          {aberta ? (
+            <FolderOpen
+              size={15}
+              weight={selecionada ? 'fill' : 'regular'}
+              className={selecionada ? 'text-zinc-800' : 'text-zinc-400'}
+            />
+          ) : (
+            <Folder
+              size={15}
+              weight={selecionada ? 'fill' : 'regular'}
+              className={selecionada ? 'text-zinc-800' : 'text-zinc-400'}
+            />
+          )}
+
+          <span className="text-xs capitalize truncate">{no.nome}</span>
+        </div>
+
+        <span className="text-[10px] font-mono text-zinc-400">
+          {no.totalTarefas}
+        </span>
+      </div>
+
+      {temFilhos && aberta && (
+        <div className="pl-3 ml-2 border-l border-zinc-200 space-y-0.5">
+          {subpastasOrdenadas.map((subNo) => (
+            <NoPastaDesktopSidebar
+              key={subNo.caminhoCompleto}
+              no={subNo}
+              caminhoSelecionado={caminhoSelecionado}
+              setCaminhoSelecionado={setCaminhoSelecionado}
+              pastasAbertas={pastasAbertas}
+              togglePasta={togglePasta}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ----------------------------------------------------
+// COMPONENTE PRINCIPAL CONTEXTSVIEW
+// ----------------------------------------------------
 export default function ContextsView({
   tarefas,
   adicionarTarefa,
@@ -314,14 +430,6 @@ export default function ContextsView({
     }
   });
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(PASTAS_STORAGE_KEY, JSON.stringify(pastasAbertas));
-    } catch (e) {
-      console.error('Falha ao persistir pastas:', e);
-    }
-  }, [pastasAbertas]);
-
   const arvore = construirArvoreContextos(tarefas);
 
   // Pasta 'agenda' sempre no topo; demais pastas em ordem alfabética
@@ -330,6 +438,31 @@ export default function ContextsView({
     if (b.nome === 'agenda') return 1;
     return a.nome.localeCompare(b.nome);
   });
+
+  // Estado da pasta selecionada no Desktop (padrão: agenda ou primeira pasta existente)
+  const [caminhoSelecionado, setCaminhoSelecionado] = useState(
+    () => pastasPrincipais[0]?.caminhoCompleto || 'agenda'
+  );
+
+  // Estados de edição e novo input para a área de detalhe do Desktop
+  const [novoTextoDesktop, setNovoTextoDesktop] = useState('');
+  const [editandoIdDesktop, setEditandoIdDesktop] = useState(null);
+  const [textoEdicaoDesktop, setTextoEdicaoDesktop] = useState('');
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PASTAS_STORAGE_KEY, JSON.stringify(pastasAbertas));
+    } catch (e) {
+      console.error('Falha ao persistir pastas:', e);
+    }
+  }, [pastasAbertas]);
+
+  // Mantém caminho válido caso pastas mudem
+  useEffect(() => {
+    if (pastasPrincipais.length > 0 && !caminhoSelecionado) {
+      setCaminhoSelecionado(pastasPrincipais[0].caminhoCompleto);
+    }
+  }, [pastasPrincipais, caminhoSelecionado]);
 
   const togglePasta = (caminho) => {
     setPastasAbertas((prev) => {
@@ -341,39 +474,189 @@ export default function ContextsView({
     });
   };
 
+  // Encontra todas as tarefas que pertencem ao caminho selecionado ou subpastas dele
+  const tarefasDoContextoDesktop = tarefas.filter((t) => {
+    const ctx = (t.contexto || 'geral').toLowerCase().trim();
+    return ctx === caminhoSelecionado || ctx.startsWith(`${caminhoSelecionado}/`);
+  });
+
+  const handleCriarItemDesktop = (e) => {
+    e.preventDefault();
+    if (!novoTextoDesktop.trim()) return;
+
+    const parsed = processarInputRapido(novoTextoDesktop.trim());
+    if (!parsed || !parsed.titulo) return;
+
+    adicionarTarefa({
+      ...parsed,
+      contexto: parsed.contexto !== 'geral' ? parsed.contexto : caminhoSelecionado,
+    });
+
+    setNovoTextoDesktop('');
+  };
+
+  const iniciarEdicaoDesktop = (tarefa) => {
+    setEditandoIdDesktop(tarefa.id);
+    setTextoEdicaoDesktop(tarefa.titulo);
+  };
+
+  const salvarEdicaoDesktop = (id) => {
+    if (textoEdicaoDesktop.trim()) {
+      const parsed = processarInputRapido(textoEdicaoDesktop.trim());
+      if (parsed && parsed.titulo) {
+        editarTarefa(id, {
+          titulo: parsed.titulo,
+          icone: parsed.icone !== 'Circle' ? parsed.icone : undefined,
+          tipo: parsed.tipo,
+          horario: parsed.horario,
+          cadencia: parsed.cadencia,
+          proximaData: parsed.proximaData,
+          contexto: parsed.contexto !== 'geral' ? parsed.contexto : undefined,
+        });
+      } else {
+        editarTarefa(id, { titulo: textoEdicaoDesktop.trim() });
+      }
+    }
+    setEditandoIdDesktop(null);
+    setTextoEdicaoDesktop('');
+  };
+
   return (
-    <div className="space-y-4 pb-24">
-      <div className={`flex items-center justify-between pb-2 border-b ${THEME.contextos.divisor}`}>
-        <div>
-          <h2 className={`text-xs uppercase tracking-wider font-bold ${THEME.contextos.cabecalhoTitulo}`}>
-            Árvore de Contextos
-          </h2>
-          <p className={`text-[11px] font-medium ${THEME.contextos.cabecalhoSubtitulo}`}>
-            Gerencie pastas, rotinas periódicas e tarefas
-          </p>
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* ======================================================== */}
+      {/* 1. VISUALIZAÇÃO MOBILE (< lg) - Árvore Sanfonada Atual    */}
+      {/* ======================================================== */}
+      <div className="space-y-4 pb-24 overflow-y-auto no-scrollbar lg:hidden">
+        <div className={`flex items-center justify-between pb-2 border-b ${THEME.contextos.divisor}`}>
+          <div>
+            <h2 className={`text-xs uppercase tracking-wider font-bold ${THEME.contextos.cabecalhoTitulo}`}>
+              Árvore de Contextos
+            </h2>
+            <p className={`text-[11px] font-medium ${THEME.contextos.cabecalhoSubtitulo}`}>
+              Gerencie pastas, rotinas periódicas e tarefas
+            </p>
+          </div>
         </div>
+
+        {pastasPrincipais.length === 0 ? (
+          <div className="text-center py-16 text-zinc-400 text-xs">
+            Nenhum contexto criado ainda. Crie tarefas com #[pasta/subpasta] no topo.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {pastasPrincipais.map((no) => (
+              <NoPastaMobile
+                key={no.caminhoCompleto}
+                no={no}
+                pastasAbertas={pastasAbertas}
+                togglePasta={togglePasta}
+                onAdicionarNaPasta={adicionarTarefa}
+                alternarPrioridade={alternarPrioridade}
+                onEditarTarefa={editarTarefa}
+                onRemoverTarefa={removerTarefa}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {pastasPrincipais.length === 0 ? (
-        <div className="text-center py-16 text-zinc-400 text-xs">
-          Nenhum contexto criado ainda. Crie tarefas com #[pasta/subpasta] no topo.
+      {/* ======================================================== */}
+      {/* 2. VISUALIZAÇÃO DESKTOP (lg+) - Painel Mestre-Detalhe      */}
+      {/* ======================================================== */}
+      <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6 lg:h-full lg:min-h-0">
+        {/* Painel Esquerdo: Árvore Navegadora de Pastas (4 colunas) */}
+        <div className="lg:col-span-4 flex flex-col h-full min-h-0 border-r border-zinc-200 pr-5">
+          <div className="pb-3 mb-2 border-b border-zinc-200 shrink-0">
+            <h2 className={`text-xs uppercase tracking-wider font-bold ${THEME.contextos.cabecalhoTitulo}`}>
+              Pastas & Contextos
+            </h2>
+            <p className="text-[11px] text-zinc-500">
+              Selecione uma categoria para visualizar suas tarefas
+            </p>
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-1 no-scrollbar pr-1">
+            {pastasPrincipais.length === 0 ? (
+              <div className="text-zinc-400 text-xs py-8">Nenhuma pasta criada.</div>
+            ) : (
+              pastasPrincipais.map((no) => (
+                <NoPastaDesktopSidebar
+                  key={no.caminhoCompleto}
+                  no={no}
+                  caminhoSelecionado={caminhoSelecionado}
+                  setCaminhoSelecionado={setCaminhoSelecionado}
+                  pastasAbertas={pastasAbertas}
+                  togglePasta={togglePasta}
+                />
+              ))
+            )}
+          </div>
         </div>
-      ) : (
-        <div className="space-y-2">
-          {pastasPrincipais.map((no) => (
-            <NoPasta
-              key={no.caminhoCompleto}
-              no={no}
-              pastasAbertas={pastasAbertas}
-              togglePasta={togglePasta}
-              onAdicionarNaPasta={adicionarTarefa}
-              alternarPrioridade={alternarPrioridade}
-              onEditarTarefa={editarTarefa}
-              onRemoverTarefa={removerTarefa}
-            />
-          ))}
+
+        {/* Painel Direito: Área de Trabalho do Contexto Selecionado (8 colunas) */}
+        <div className="lg:col-span-8 flex flex-col h-full min-h-0 pl-1">
+          {/* Topo do Detalhe: Caminho, Contagem e Input Rápido */}
+          <div className="pb-3 mb-3 border-b border-zinc-200 shrink-0">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Tag size={15} weight="bold" className="text-zinc-500" />
+                <h3 className="text-sm font-bold capitalize text-zinc-900 tracking-tight">
+                  {caminhoSelecionado || 'Geral'}
+                </h3>
+              </div>
+              <span className="text-xs font-mono font-medium text-zinc-500">
+                {tarefasDoContextoDesktop.length}{' '}
+                {tarefasDoContextoDesktop.length === 1 ? 'tarefa' : 'tarefas'}
+              </span>
+            </div>
+
+            {/* Input direto no contexto */}
+            <form onSubmit={handleCriarItemDesktop} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={novoTextoDesktop}
+                onChange={(e) => setNovoTextoDesktop(e.target.value)}
+                placeholder={`Nova ação em "${caminhoSelecionado}"...`}
+                className={`flex-1 rounded-xl px-3 py-1.5 text-xs focus:outline-none bg-white border border-zinc-200 shadow-sm ${THEME.quickInput.borderFocus}`}
+              />
+              <button
+                type="submit"
+                disabled={!novoTextoDesktop.trim()}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 shadow-sm disabled:opacity-30 ${THEME.foco.concluirBtn}`}
+              >
+                <Plus size={13} weight="bold" /> Adicionar
+              </button>
+            </form>
+          </div>
+
+          {/* Lista de Tarefas do Contexto Selecionado (rolagem restrita ao quadro) */}
+          <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-1">
+            {tarefasDoContextoDesktop.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center text-zinc-400 text-xs py-16 border border-dashed border-zinc-200 rounded-xl">
+                <p>Nenhuma tarefa cadastrada em #{caminhoSelecionado}.</p>
+                <p className="text-[11px] text-zinc-400 mt-1">
+                  Use o campo acima para adicionar a primeira tarefa nesta pasta.
+                </p>
+              </div>
+            ) : (
+              tarefasDoContextoDesktop.map((tarefa) => (
+                <CardTarefaContexto
+                  key={tarefa.id}
+                  tarefa={tarefa}
+                  editandoId={editandoIdDesktop}
+                  textoEdicao={textoEdicaoDesktop}
+                  setTextoEdicao={setTextoEdicaoDesktop}
+                  setEditandoId={setEditandoIdDesktop}
+                  iniciarEdicao={iniciarEdicaoDesktop}
+                  salvarEdicao={salvarEdicaoDesktop}
+                  alternarPrioridade={alternarPrioridade}
+                  onRemoverTarefa={removerTarefa}
+                />
+              ))
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
