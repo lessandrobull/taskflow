@@ -72,13 +72,13 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
     })
     .sort((a, b) => (a.ordemFila || 0) - (b.ordemFila || 0));
 
-  // 3. Foco: fila ordenada de execução
+  // 3. Foco: estritamente 3 tarefas no total (1 principal + 2 no radar)
   const filaFoco = tarefas
     .filter((t) => t.tipo === TIPOS_TAREFA.FOCO && !t.concluido)
     .sort((a, b) => (a.ordemFila || 0) - (b.ordemFila || 0));
 
   const cardPrincipal = filaFoco[0] || null;
-  const cardsRadar = filaFoco.slice(1);
+  const cardsRadar = filaFoco.slice(1, 3);
 
   return (
     <div className="h-full flex flex-col justify-between gap-2.5 overflow-hidden lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
@@ -98,7 +98,7 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
             {agendadosTarefas.map((item) => (
               <div
                 key={item.id}
-                className={`flex items-center justify-between p-3 rounded-xl border shadow-sm shrink-0 ${THEME.agendados.cardBg} ${THEME.agendados.cardBorder}`}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl border shadow-sm shrink-0 ${THEME.agendados.cardBg} ${THEME.agendados.cardBorder}`}
               >
                 <div className="flex items-center gap-3 min-w-0 pr-2">
                   <DynamicIcon name={item.icone || 'Clock'} size={18} className={`shrink-0 ${THEME.agendados.icone}`} />
@@ -137,7 +137,7 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
                 <div
                   key={item.id}
                   onClick={() => toggleConcluir(item.id)}
-                  className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors shadow-sm shrink-0 ${THEME.rotina.cardBg} ${THEME.rotina.cardBorder}`}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl border cursor-pointer transition-colors shadow-sm shrink-0 ${THEME.rotina.cardBg} ${THEME.rotina.cardBorder}`}
                 >
                   <div className="flex items-center gap-3 min-w-0 pr-2">
                     <button className={`transition-colors shrink-0 ${THEME.rotina.checkBtn}`}>
@@ -163,8 +163,9 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
       </section>
 
       {/* 3. BLOCO FOCO */}
-      <section className="flex-1 min-h-0 flex flex-col justify-between lg:h-full lg:flex-1 lg:justify-start lg:gap-3">
-        <div className="flex items-center justify-between mb-1 shrink-0">
+      <section className="flex-1 min-h-0 flex flex-col lg:h-full lg:flex-1 lg:justify-start lg:gap-3">
+        {/* Cabeçalho alinhado com margem idêntica aos blocos 1 e 2 */}
+        <div className="flex items-center justify-between mb-1.5 shrink-0">
           <h2 className={`text-xs uppercase tracking-wider font-bold ${THEME.foco.titulo}`}>
             Foco
           </h2>
@@ -173,10 +174,9 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
           </span>
         </div>
 
-        {/* Card Principal de Foco (Altura compacta e divisória centralizada) */}
+        {/* Card Principal de Foco */}
         {cardPrincipal ? (
           <div className={`px-3.5 py-2.5 rounded-xl border shadow-sm flex flex-col shrink-0 ${THEME.foco.principalBg} ${THEME.foco.principalBorder}`}>
-            {/* Topo do Card: Número 1, Ícone e Título com alinhamento vertical */}
             <div className="flex items-center gap-2.5">
               <span className="font-mono font-bold text-sm text-emerald-800 shrink-0">
                 1.
@@ -192,7 +192,6 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
               </h3>
             </div>
 
-            {/* Rodapé do Card: Divisória perfeitamente equilibrada */}
             <div className={`flex items-center justify-between pt-2 mt-2 border-t ${THEME.foco.principalDivisor}`}>
               <button
                 onClick={() => pularParaDepois(cardPrincipal.id)}
@@ -218,24 +217,22 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
           </div>
         )}
 
-        {/* Cards no Radar (Compactados para exibir as duas tarefas perfeitamente acima da aba inferior) */}
+        {/* Cards no Radar (exatamente 2 tarefas, simetria vertical e mesmo tamanho dos cards secundários) */}
         {cardsRadar.length > 0 && (
-          <div className="shrink-0 lg:flex-1 lg:min-h-0 flex flex-col mt-1.5 lg:mt-0">
-            <span className={`text-[11px] font-semibold uppercase tracking-wide mb-1 shrink-0 ${THEME.foco.radarTitulo}`}>
+          <div className="shrink-0 flex flex-col lg:flex-1 lg:min-h-0">
+            <span className={`text-[11px] font-semibold uppercase tracking-wide my-1.5 shrink-0 ${THEME.foco.radarTitulo}`}>
               A seguir no radar ({cardsRadar.length})
             </span>
-            <div className="h-[88px] lg:h-full lg:flex-1 overflow-y-auto space-y-1.5 no-scrollbar pr-0.5">
+            <div className="space-y-1.5">
               {cardsRadar.map((item, index) => (
                 <div
                   key={item.id}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border shadow-sm shrink-0 ${THEME.foco.radarBg} ${THEME.foco.radarBorder}`}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border shadow-sm shrink-0 ${THEME.foco.radarBg} ${THEME.foco.radarBorder}`}
                 >
                   <span className={`font-mono font-bold text-xs shrink-0 ${THEME.foco.radarNumero}`}>
                     {index + 2}.
                   </span>
-                  {item.icone && item.icone !== 'Circle' && (
-                    <DynamicIcon name={item.icone} size={17} className={`shrink-0 ${THEME.foco.radarIcone}`} />
-                  )}
+                  <DynamicIcon name={item.icone} size={18} className={`shrink-0 ${THEME.foco.radarIcone}`} />
                   <span className={`truncate text-sm font-medium ${THEME.foco.radarTexto}`}>
                     {item.titulo}
                   </span>
