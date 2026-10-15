@@ -119,4 +119,22 @@ export const THEME = {
     p2: 'bg-amber-100 text-amber-700 border-amber-300',
     p3: 'bg-zinc-100 text-zinc-600 border-zinc-300',
   },
+
+  // Página de Notas (Âmbar / Laranja)
+  notas: {
+    cabecalhoTitulo: 'text-amber-800',
+    divisor: 'border-zinc-200',
+    abaAtiva: 'bg-amber-50 text-amber-950 border-amber-300 shadow-sm font-bold',
+    abaInativa: 'text-zinc-500 hover:text-zinc-800 border-zinc-200 bg-white',
+    addBtn: 'text-amber-800 bg-amber-50 border-amber-200 hover:bg-amber-100',
+    editorBg: 'bg-amber-50/20',
+    editorBorder: 'border-amber-200/90 focus:border-amber-400',
+    editorTexto: 'text-zinc-900',
+    editorPlaceholder: 'placeholder-zinc-400',
+    cardLinhaBg: 'bg-white',
+    cardLinhaBorder: 'border-zinc-200 hover:border-amber-300 shadow-sm',
+    cardLinhaTexto: 'text-zinc-800',
+    converterBtn: 'bg-amber-100 text-amber-900 hover:bg-amber-200 border-amber-300',
+    msgSucesso: 'text-emerald-700 font-semibold',
+  },
 };
