@@ -32,7 +32,6 @@ export default function QuickInput({ onAdicionar }) {
     const parsed = processarInputRapido(texto);
     if (!parsed || !parsed.titulo) return;
 
-    // Regra: Bloqueia se for agenda e não tiver horário
     if (parsed.tipo === TIPOS_TAREFA.AGENDADO && !parsed.horario) {
       setErroAgenda('Informe o horário (ex: às 14h ou @14:30)');
       setTimeout(() => setErroAgenda(''), 3500);
@@ -58,16 +57,17 @@ export default function QuickInput({ onAdicionar }) {
           className={`w-full rounded-xl px-3 py-1.5 text-xs transition-colors focus:outline-none border ${THEME.quickInput.bg} ${THEME.quickInput.border} ${THEME.quickInput.text} ${THEME.quickInput.borderFocus}`}
         />
 
-        {/* Placeholder Composto com Cores (visível apenas quando vazio) */}
+        {/* Placeholder translúcido suave */}
         {!texto && (
           <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs gap-1 select-none">
             {erroAgenda ? (
               <span className="text-rose-500 font-semibold">{erroAgenda}</span>
             ) : (
               <>
-                <span className="text-emerald-700/80 font-semibold">Tarefa</span>
-                <span className="text-purple-700/80 font-semibold">frequencia</span>
-                <span className="text-zinc-400 font-medium">#contexto/sub-contexto</span>
+                <span className="text-emerald-600/45 font-normal">Tarefa</span>
+                <span className="text-sky-600/45 font-normal">horário</span>
+                <span className="text-purple-600/45 font-normal">frequência</span>
+                <span className="text-zinc-400/90 font-normal">#contexto/sub-contexto</span>
               </>
             )}
           </div>
