@@ -81,18 +81,24 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
   const cardsRadar = filaFoco.slice(1);
 
   return (
-    <div className="h-full flex flex-col justify-between gap-2.5 overflow-hidden">
+    <div className="h-full flex flex-col justify-between gap-2.5 overflow-hidden lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
       {/* 1. BLOCO AGENDA */}
-      <section className="flex flex-col shrink-0">
-        <h2 className={`text-xs uppercase tracking-wider font-bold mb-1.5 shrink-0 ${THEME.agendados.titulo}`}>
-          Agenda
-        </h2>
+      <section className="flex flex-col shrink-0 lg:h-full lg:min-h-0 lg:flex-1">
+        <div className="flex items-center justify-between mb-1.5 shrink-0">
+          <h2 className={`text-xs uppercase tracking-wider font-bold ${THEME.agendados.titulo}`}>
+            Agenda
+          </h2>
+          <span className="text-[11px] font-mono text-zinc-400 lg:inline hidden">
+            {agendadosTarefas.length} {agendadosTarefas.length === 1 ? 'compromisso' : 'compromissos'}
+          </span>
+        </div>
+
         {agendadosTarefas.length > 0 ? (
-          <div className="h-[158px] overflow-y-auto space-y-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="h-[158px] lg:h-full lg:flex-1 overflow-y-auto space-y-2 no-scrollbar pr-0.5">
             {agendadosTarefas.map((item) => (
               <div
                 key={item.id}
-                className={`flex items-center justify-between p-3 rounded-lg border shadow-sm shrink-0 ${THEME.agendados.cardBg} ${THEME.agendados.cardBorder}`}
+                className={`flex items-center justify-between p-3 rounded-xl border shadow-sm shrink-0 ${THEME.agendados.cardBg} ${THEME.agendados.cardBorder}`}
               >
                 <div className="flex items-center gap-3 min-w-0 pr-2">
                   <DynamicIcon name={item.icone || 'Clock'} size={18} className={`shrink-0 ${THEME.agendados.icone}`} />
@@ -106,26 +112,32 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
             ))}
           </div>
         ) : (
-          <div className={`h-[158px] flex items-center justify-center rounded-lg border border-dashed text-xs text-center shrink-0 ${THEME.agendados.cardBg} ${THEME.agendados.cardBorder} ${THEME.agendados.tempoRestante}`}>
+          <div className={`h-[158px] lg:h-full lg:flex-1 flex items-center justify-center rounded-xl border border-dashed text-xs text-center shrink-0 ${THEME.agendados.cardBg} ${THEME.agendados.cardBorder} ${THEME.agendados.tempoRestante}`}>
             Nenhum compromisso agendado
           </div>
         )}
       </section>
 
       {/* 2. BLOCO ROTINA */}
-      <section className="flex flex-col shrink-0">
-        <h2 className={`text-xs uppercase tracking-wider font-bold mb-1.5 shrink-0 ${THEME.rotina.titulo}`}>
-          Rotina
-        </h2>
+      <section className="flex flex-col shrink-0 lg:h-full lg:min-h-0 lg:flex-1">
+        <div className="flex items-center justify-between mb-1.5 shrink-0">
+          <h2 className={`text-xs uppercase tracking-wider font-bold ${THEME.rotina.titulo}`}>
+            Rotina
+          </h2>
+          <span className="text-[11px] font-mono text-zinc-400 lg:inline hidden">
+            {rotinaTarefas.length} {rotinaTarefas.length === 1 ? 'ritual' : 'rituais'}
+          </span>
+        </div>
+
         {rotinaTarefas.length > 0 ? (
-          <div className="h-[158px] overflow-y-auto space-y-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="h-[158px] lg:h-full lg:flex-1 overflow-y-auto space-y-2 no-scrollbar pr-0.5">
             {rotinaTarefas.map((item) => {
               const atrasado = rotinaAtrasada(item);
               return (
                 <div
                   key={item.id}
                   onClick={() => toggleConcluir(item.id)}
-                  className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors shadow-sm shrink-0 ${THEME.rotina.cardBg} ${THEME.rotina.cardBorder}`}
+                  className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors shadow-sm shrink-0 ${THEME.rotina.cardBg} ${THEME.rotina.cardBorder}`}
                 >
                   <div className="flex items-center gap-3 min-w-0 pr-2">
                     <button className={`transition-colors shrink-0 ${THEME.rotina.checkBtn}`}>
@@ -144,22 +156,27 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
             })}
           </div>
         ) : (
-          <div className={`h-[158px] flex items-center justify-center rounded-lg border border-dashed text-xs text-center shrink-0 ${THEME.rotina.cardBg} ${THEME.rotina.cardBorder} text-purple-400`}>
+          <div className={`h-[158px] lg:h-full lg:flex-1 flex items-center justify-center rounded-xl border border-dashed text-xs text-center shrink-0 ${THEME.rotina.cardBg} ${THEME.rotina.cardBorder} text-purple-400`}>
             Nenhuma rotina pendente
           </div>
         )}
       </section>
 
       {/* 3. BLOCO FOCO */}
-      <section className="flex-1 min-h-0 flex flex-col justify-between">
-        <h2 className={`text-xs uppercase tracking-wider font-bold mb-1.5 shrink-0 ${THEME.foco.titulo}`}>
-          Foco
-        </h2>
+      <section className="flex-1 min-h-0 flex flex-col justify-between lg:h-full lg:flex-1 lg:justify-start lg:gap-3">
+        <div className="flex items-center justify-between mb-1.5 shrink-0">
+          <h2 className={`text-xs uppercase tracking-wider font-bold ${THEME.foco.titulo}`}>
+            Foco
+          </h2>
+          <span className="text-[11px] font-mono text-zinc-400 lg:inline hidden">
+            {filaFoco.length} {filaFoco.length === 1 ? 'tarefa' : 'tarefas'}
+          </span>
+        </div>
 
         {/* Card Principal */}
         {cardPrincipal ? (
-          <div className={`flex-1 min-h-0 p-4 rounded-xl border shadow-sm flex flex-col justify-between ${THEME.foco.principalBg} ${THEME.foco.principalBorder}`}>
-            <div className="flex items-start gap-3">
+          <div className={`flex-1 min-h-0 lg:flex-none lg:shrink-0 p-4 rounded-xl border shadow-sm flex flex-col justify-between ${THEME.foco.principalBg} ${THEME.foco.principalBorder}`}>
+            <div className="flex items-start gap-3 mb-3">
               <DynamicIcon name={cardPrincipal.icone} size={22} weight="bold" className={`mt-0.5 shrink-0 ${THEME.foco.principalIcone}`} />
               <div className="flex-1 min-w-0">
                 <h3 className={`text-base font-bold leading-snug break-words ${THEME.foco.principalTexto}`}>
@@ -168,7 +185,7 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
               </div>
             </div>
 
-            {/* Botoes com lados invertidos: Pular para depois à esquerda, Concluir à direita */}
+            {/* Botoes invertidos: Pular para depois à esquerda, Concluir à direita */}
             <div className={`flex items-center justify-between pt-2 border-t ${THEME.foco.principalDivisor}`}>
               <button
                 onClick={() => pularParaDepois(cardPrincipal.id)}
@@ -189,22 +206,22 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
             </div>
           </div>
         ) : (
-          <div className={`flex-1 min-h-0 p-4 rounded-xl border border-dashed flex items-center justify-center text-center text-xs ${THEME.foco.vazioBg}`}>
+          <div className={`flex-1 min-h-0 lg:flex-none p-4 rounded-xl border border-dashed flex items-center justify-center text-center text-xs ${THEME.foco.vazioBg}`}>
             Nenhuma tarefa na fila de foco para hoje.
           </div>
         )}
 
         {/* Cards no Radar */}
         {cardsRadar.length > 0 && (
-          <div className="shrink-0 flex flex-col mt-2">
+          <div className="shrink-0 lg:flex-1 lg:min-h-0 flex flex-col mt-2 lg:mt-0">
             <span className={`text-[11px] font-semibold uppercase tracking-wide mb-1 shrink-0 ${THEME.foco.radarTitulo}`}>
-              A seguir no radar
+              A seguir no radar ({cardsRadar.length})
             </span>
-            <div className="h-[104px] overflow-y-auto space-y-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="h-[104px] lg:h-full lg:flex-1 overflow-y-auto space-y-2 no-scrollbar pr-0.5">
               {cardsRadar.map((item, index) => (
                 <div
                   key={item.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg border shadow-sm shrink-0 ${THEME.foco.radarBg} ${THEME.foco.radarBorder}`}
+                  className={`flex items-center gap-3 p-3 rounded-xl border shadow-sm shrink-0 ${THEME.foco.radarBg} ${THEME.foco.radarBorder}`}
                 >
                   <span className={`font-mono font-bold text-xs shrink-0 ${THEME.foco.radarNumero}`}>
                     {index + 2}.
