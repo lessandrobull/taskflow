@@ -1,4 +1,4 @@
-import { TIPOS_TAREFA, PRIORIDADES } from '../types';
+import { TIPOS_TAREFA, PRIORIDADES } from '../types.js';
 
 const MAPA_ICONES = {
   aula: 'ChalkboardTeacher',
