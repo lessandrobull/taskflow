@@ -12,11 +12,28 @@ export default function NotesView({
   atualizarNota,
   removerNota,
   onAdicionarTarefa,
+  tarefas = [],
 }) {
   const [mensagemConversao, setMensagemConversao] = useState('');
-  const [linhaConvertida, setLinhaConvertida] = useState(null);
 
-  const handleConverterLinha = (linha, idx) => {
+  const verificarSeExiste = (linha) => {
+    const limpa = linha.replace(/^[-*•\d.]\s*/, '').trim();
+    if (!limpa) return false;
+
+    const parsed = processarInputRapido(limpa);
+    if (!parsed || !parsed.titulo) return false;
+
+    return tarefas.some((t) => {
+      const mesmoTitulo = (t.titulo || '').trim().toLowerCase() === parsed.titulo.trim().toLowerCase();
+      const ctxT = (t.contexto || 'geral').trim().toLowerCase();
+      const ctxP = (parsed.contexto || 'geral').trim().toLowerCase();
+      return mesmoTitulo && ctxT === ctxP;
+    });
+  };
+
+  const handleConverterLinha = (linha) => {
+    if (verificarSeExiste(linha)) return;
+
     const limpa = linha.replace(/^[-*•\d.]\s*/, '').trim();
     if (!limpa) return;
 
@@ -24,12 +41,10 @@ export default function NotesView({
     if (!parsed || !parsed.titulo) return;
 
     onAdicionarTarefa(parsed);
-    setLinhaConvertida(idx);
     setMensagemConversao(`Tarefa "${parsed.titulo}" criada na fila.`);
 
     setTimeout(() => {
       setMensagemConversao('');
-      setLinhaConvertida(null);
     }, 2500);
   };
 
@@ -68,9 +83,8 @@ export default function NotesView({
                   <button
                     key={n.id}
                     onClick={() => setNotaAtivaId(n.id)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs whitespace-nowrap transition-all border shrink-0 ${
-                      ativa ? THEME.notas.abaAtiva : THEME.notas.abaInativa
-                    }`}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs whitespace-nowrap transition-all border shrink-0 ${ativa ? THEME.notas.abaAtiva : THEME.notas.abaInativa
+                      }`}
                   >
                     <FileText
                       size={13}
@@ -142,23 +156,48 @@ export default function NotesView({
 
             {/* Apenas esta lista rola, ocupando todo o espaço até a barra inferior sem barra visível */}
             <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-1.5 pr-0.5 pb-1">
-              {linhasUteis.map((linha, idx) => (
-                <div
-                  key={idx}
-                  className={`flex items-center justify-between p-2 rounded-lg border transition-colors group shrink-0 ${THEME.notas.cardLinhaBg} ${THEME.notas.cardLinhaBorder}`}
-                >
-                  <span className={`truncate flex-1 mr-2 text-xs font-medium ${THEME.notas.cardLinhaTexto}`}>
-                    {linha}
-                  </span>
-                  <button
-                    onClick={() => handleConverterLinha(linha, idx)}
-                    className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border transition-colors shadow-sm shrink-0 ${THEME.notas.converterBtn}`}
+              {linhasUteis.map((linha, idx) => {
+                const limpa = linha.replace(/^[-*•\d.]\s*/, '').trim();
+                const jaExiste = verificarSeExiste(linha);
+
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-center justify-between p-2 rounded-lg border transition-colors group shrink-0 ${
+                      jaExiste
+                        ? 'bg-emerald-50/60 border-emerald-300'
+                        : `${THEME.notas.cardLinhaBg} ${THEME.notas.cardLinhaBorder}`
+                    }`}
                   >
-                    <ArrowElbowDownRight size={11} weight="bold" />
-                    Criar Tarefa
-                  </button>
-                </div>
-              ))}
+                    <span className={`truncate flex-1 mr-2 text-xs font-medium ${
+                      jaExiste ? 'text-emerald-950 font-semibold' : THEME.notas.cardLinhaTexto
+                    }`}>
+                      {limpa}
+                    </span>
+                    <button
+                      onClick={() => !jaExiste && handleConverterLinha(linha)}
+                      disabled={jaExiste}
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border transition-colors shadow-sm shrink-0 ${
+                        jaExiste
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 cursor-default font-mono uppercase tracking-wider'
+                          : THEME.notas.converterBtn
+                      }`}
+                    >
+                      {jaExiste ? (
+                        <>
+                          <CheckCircle size={12} weight="fill" className="text-emerald-600" />
+                          Adicionada
+                        </>
+                      ) : (
+                        <>
+                          <ArrowElbowDownRight size={11} weight="bold" />
+                          Criar Tarefa
+                        </>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -179,9 +218,8 @@ export default function NotesView({
                     <button
                       key={n.id}
                       onClick={() => setNotaAtivaId(n.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all border shrink-0 ${
-                        ativa ? THEME.notas.abaAtiva : THEME.notas.abaInativa
-                      }`}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all border shrink-0 ${ativa ? THEME.notas.abaAtiva : THEME.notas.abaInativa
+                        }`}
                     >
                       <FileText
                         size={14}
@@ -265,21 +303,21 @@ export default function NotesView({
             ) : (
               linhasUteis.map((linha, idx) => {
                 const limpa = linha.replace(/^[-*•\d.]\s*/, '').trim();
-                const foiConvertida = linhaConvertida === idx;
+                const jaExiste = verificarSeExiste(linha);
 
                 return (
                   <button
                     key={idx}
-                    onClick={() => handleConverterLinha(linha, idx)}
-                    className={`w-full text-left p-3 rounded-xl border transition-all shadow-sm flex items-center justify-between group ${
-                      foiConvertida
-                        ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                    disabled={jaExiste}
+                    onClick={() => !jaExiste && handleConverterLinha(linha)}
+                    className={`w-full text-left p-3 rounded-xl border transition-all shadow-sm flex items-center justify-between group ${jaExiste
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-900 cursor-default'
                         : 'bg-white border-zinc-200 hover:border-amber-300 hover:bg-amber-50/40 text-zinc-800'
-                    }`}
-                    title="Clique para adicionar à sua fila de tarefas"
+                      }`}
+                    title={jaExiste ? 'Tarefa ativa no TaskFlow' : 'Clique para adicionar à sua fila de tarefas'}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-3">
-                      {foiConvertida ? (
+                      {jaExiste ? (
                         <CheckCircle size={16} weight="fill" className="text-emerald-600 shrink-0" />
                       ) : (
                         <Plus size={15} weight="bold" className="text-amber-600 shrink-0 group-hover:scale-110 transition-transform" />
@@ -290,13 +328,12 @@ export default function NotesView({
                     </div>
 
                     <span
-                      className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border shrink-0 transition-colors ${
-                        foiConvertida
+                      className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border shrink-0 transition-colors ${jaExiste
                           ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                           : 'bg-amber-100 text-amber-900 border-amber-300 group-hover:bg-amber-200'
-                      }`}
+                        }`}
                     >
-                      {foiConvertida ? 'Adicionada' : 'Criar Tarefa'}
+                      {jaExiste ? 'Adicionada' : 'Criar Tarefa'}
                     </span>
                   </button>
                 );

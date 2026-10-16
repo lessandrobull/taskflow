@@ -96,6 +96,7 @@ export default function App() {
             atualizarNota={atualizarNota}
             removerNota={removerNota}
             onAdicionarTarefa={adicionarTarefa}
+            tarefas={tarefas}
           />
         )}
       </main>
