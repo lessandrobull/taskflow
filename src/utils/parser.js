@@ -95,14 +95,36 @@ function formatarDataISO(data) {
   return `${ano}-${mes}-${dia}`;
 }
 
-function calcularProximoDiaSemana(diaAlvo) {
-  const hoje = new Date();
+function calcularProximoDiaSemana(diaAlvo, dataReferencia = new Date()) {
+  const hoje = new Date(dataReferencia);
   const diaAtual = hoje.getDay();
   let diff = diaAlvo - diaAtual;
   if (diff < 0) diff += 7;
   const alvo = new Date(hoje);
   alvo.setDate(hoje.getDate() + diff);
   return formatarDataISO(alvo);
+}
+
+function resolverTermoData(termo, dataBase = new Date()) {
+  if (!termo) return null;
+  const limpo = termo.trim().toLowerCase().replace(/^dia\s+/, '');
+
+  if (DIAS_SEMANA[limpo] !== undefined) {
+    return calcularProximoDiaSemana(DIAS_SEMANA[limpo], dataBase);
+  }
+
+  const matchBr = limpo.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+  if (matchBr) {
+    const d = String(matchBr[1]).padStart(2, '0');
+    const m = String(matchBr[2]).padStart(2, '0');
+    const anoAtual = dataBase.getFullYear();
+    const anoStr = matchBr[3]
+      ? (matchBr[3].length === 2 ? `20${matchBr[3]}` : matchBr[3])
+      : String(anoAtual);
+    return `${anoStr}-${m}-${d}`;
+  }
+
+  return null;
 }
 
 export function processarInputRapido(textoBruto) {
@@ -114,8 +136,12 @@ export function processarInputRapido(textoBruto) {
   let tipo = TIPOS_TAREFA.FOCO;
   let cadencia = null;
   let proximaData = null;
+  let dataInicio = null;
+  let dataLimite = null;
+  let ehRotina = false;
+  let intervaloDias = 7;
 
-  // 1. Extração de Horário (@14h, às 23h, as 23h, @14:30) com escape unicode para crase
+  // 1. Extração de Horário (@14h, às 23h, as 23h, @14:30)
   const regexHorario = /(?:@|(?:\s|^)[a\u00e0\u00e1]s\s*)(\d{1,2}(?::\d{2}|h\d{2}|h)?)/i;
   const matchHorario = texto.match(regexHorario);
   if (matchHorario) {
@@ -127,25 +153,7 @@ export function processarInputRapido(textoBruto) {
     tipo = TIPOS_TAREFA.AGENDADO;
   }
 
-  // 2. Extração de Data Brasileira: "dia 15/10", "15/10", "15/10/2026"
-  const regexDataBr = /(?:^|\s)(?:dia\s+)?(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?(?=\s|$)/i;
-  const matchDataBr = texto.match(regexDataBr);
-  if (matchDataBr) {
-    const d = String(matchDataBr[1]).padStart(2, '0');
-    const m = String(matchDataBr[2]).padStart(2, '0');
-    const anoAtual = new Date().getFullYear();
-    const anoStr = matchDataBr[3]
-      ? (matchDataBr[3].length === 2 ? `20${matchDataBr[3]}` : matchDataBr[3])
-      : String(anoAtual);
-
-    proximaData = `${anoStr}-${m}-${d}`;
-    texto = texto.replace(matchDataBr[0], '').trim();
-    if (horario) {
-      tipo = TIPOS_TAREFA.AGENDADO;
-    }
-  }
-
-  // 3. Extração de Contexto Unicode (#agenda, #casa/jardim)
+  // 2. Extração de Contexto Unicode (#agenda, #casa/jardim)
   const regexContexto = /#([\p{L}\p{N}\s\-_/]+)(?:\s|$)/u;
   const matchContexto = texto.match(regexContexto);
   if (matchContexto) {
@@ -153,27 +161,83 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchContexto[0], '').trim();
   }
 
-  if (contexto === 'agenda' || contexto.startsWith('agenda/')) {
-    tipo = TIPOS_TAREFA.AGENDADO;
-  }
+  // 3. Reconhecimento de Janela de Rotina (Período com Início e Fim)
+  // 3a. "de [dia/data] até/à [dia/data]"
+  const regexDeAte = /\bde\s+(?:dia\s+)?([^\s]+)\s+(?:at[eé]|à|[aà])\s+(?:dia\s+)?([^\s]+)\b/i;
+  const matchDeAte = texto.match(regexDeAte);
 
-  // 4. Reconhecimento de Início por dia da semana
-  const regexInicio =
-    /\b(?:iniciando(?:\s+no|\s+na)?|a\s+partir\s+de|come[çc]ando(?:\s+no|\s+na)?)\s+(domingo|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[aá]bado)\b/i;
-  const matchInicio = texto.match(regexInicio);
-  if (matchInicio) {
-    const diaNome = matchInicio[1].toLowerCase();
-    const diaAlvo = DIAS_SEMANA[diaNome];
-    if (diaAlvo !== undefined) {
-      proximaData = calcularProximoDiaSemana(diaAlvo);
+  // 3b. "começando [dia/data] terminando [dia/data]"
+  const regexComecando = /\bcome[çc]ando(?:\s+(?:no|na|em|dia))?\s+([^\s]+)\s+terminando(?:\s+(?:no|na|em|dia))?\s+([^\s]+)\b/i;
+  const matchComecando = texto.match(regexComecando);
+
+  // 3c. "inicio [dia/data] limite [dia/data]"
+  const regexInicioLimite = /\bin[ií]cio(?:\s+(?:no|na|em|dia))?\s+([^\s]+)\s+limite(?:\s+(?:no|na|em|dia))?\s+([^\s]+)\b/i;
+  const matchInicioLimite = texto.match(regexInicioLimite);
+
+  // 3d. Apenas final: "até [dia/data]" ou "limite [dia/data]"
+  const regexApenasAte = /\b(?:at[eé]|limite)(?:\s+dia)?\s+([^\s]+)\b/i;
+
+  if (matchDeAte) {
+    const dIni = resolverTermoData(matchDeAte[1]);
+    const dFim = resolverTermoData(matchDeAte[2]);
+    if (dIni && dFim) {
+      ehRotina = true;
+      dataInicio = dIni;
+      dataLimite = dFim;
+      if (dataLimite < dataInicio) {
+        const dtAjuste = new Date(`${dataLimite}T00:00:00`);
+        dtAjuste.setDate(dtAjuste.getDate() + 7);
+        dataLimite = formatarDataISO(dtAjuste);
+      }
+      texto = texto.replace(matchDeAte[0], '').trim();
     }
-    texto = texto.replace(matchInicio[0], '').trim();
+  } else if (matchComecando) {
+    const dIni = resolverTermoData(matchComecando[1]);
+    const dFim = resolverTermoData(matchComecando[2]);
+    if (dIni && dFim) {
+      ehRotina = true;
+      dataInicio = dIni;
+      dataLimite = dFim;
+      if (dataLimite < dataInicio) {
+        const dtAjuste = new Date(`${dataLimite}T00:00:00`);
+        dtAjuste.setDate(dtAjuste.getDate() + 7);
+        dataLimite = formatarDataISO(dtAjuste);
+      }
+      texto = texto.replace(matchComecando[0], '').trim();
+    }
+  } else if (matchInicioLimite) {
+    const dIni = resolverTermoData(matchInicioLimite[1]);
+    const dFim = resolverTermoData(matchInicioLimite[2]);
+    if (dIni && dFim) {
+      ehRotina = true;
+      dataInicio = dIni;
+      dataLimite = dFim;
+      if (dataLimite < dataInicio) {
+        const dtAjuste = new Date(`${dataLimite}T00:00:00`);
+        dtAjuste.setDate(dtAjuste.getDate() + 7);
+        dataLimite = formatarDataISO(dtAjuste);
+      }
+      texto = texto.replace(matchInicioLimite[0], '').trim();
+    }
+  } else {
+    const matchAte = texto.match(regexApenasAte);
+    if (matchAte) {
+      const dFim = resolverTermoData(matchAte[1]);
+      if (dFim) {
+        ehRotina = true;
+        dataInicio = formatarDataISO(new Date());
+        dataLimite = dFim;
+        if (dataLimite < dataInicio) {
+          const dtAjuste = new Date(`${dataLimite}T00:00:00`);
+          dtAjuste.setDate(dtAjuste.getDate() + 7);
+          dataLimite = formatarDataISO(dtAjuste);
+        }
+        texto = texto.replace(matchAte[0], '').trim();
+      }
+    }
   }
 
-  // 5. Reconhecimento de Rotinas
-  let ehRotina = false;
-  let intervaloDias = 7;
-
+  // 4. Reconhecimento de Frequência Explícita (1x semana, diariamente, etc.)
   const regexAdverbios = /\b(diariamente|semanalmente|quinzenalmente|mensalmente|anualmente)\b/i;
   const matchAdv = texto.match(regexAdverbios);
   if (matchAdv) {
@@ -190,7 +254,7 @@ export function processarInputRapido(textoBruto) {
   const regexACada =
     /\ba\s+cada\s+(\d+|um|uma|dois|duas|tr[êe]s|quatro|cinco|seis|sete|oito|nove|dez|quinze|vinte|trinta)\s+(dias?|semanas?|m[êe]ses?|anos?)\b/i;
   const matchACada = texto.match(regexACada);
-  if (!ehRotina && matchACada) {
+  if (matchACada) {
     ehRotina = true;
     const qtdRaw = matchACada[1].toLowerCase();
     const unidade = matchACada[2].toLowerCase();
@@ -207,7 +271,7 @@ export function processarInputRapido(textoBruto) {
   const regexVezPor =
     /\b(\d+|um|uma|dois|duas|tr[êe]s|quatro|cinco)\s*(?:x|vez(?:es)?)\s+(?:por|na|no|ao|à)\s+(dia|semana|m[êe]s|mes|ano)\b/i;
   const matchVezPor = texto.match(regexVezPor);
-  if (!ehRotina && matchVezPor) {
+  if (matchVezPor) {
     ehRotina = true;
     const vezesRaw = matchVezPor[1].toLowerCase();
     const unidade = matchVezPor[2].toLowerCase();
@@ -221,34 +285,38 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchVezPor[0], '').trim();
   }
 
-  const regexTodo =
-    /\b(?:todos?\s+os|todas?\s+as|todo|toda)\s+(dia|semana|m[êe]s|domingo|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[aá]bado)\b/i;
-  const matchTodo = texto.match(regexTodo);
-  if (!ehRotina && matchTodo) {
-    ehRotina = true;
-    const alvo = matchTodo[1].toLowerCase();
-    if (alvo === 'dia') {
-      intervaloDias = 1;
-    } else if (alvo === 'semana') {
-      intervaloDias = 7;
-    } else if (alvo === 'mês' || alvo === 'mes') {
-      intervaloDias = 30;
-    } else {
-      intervaloDias = 7;
-      if (!proximaData && DIAS_SEMANA[alvo] !== undefined) {
-        proximaData = calcularProximoDiaSemana(DIAS_SEMANA[alvo]);
+  // 5. Data única sem janela ("dia 15/10", "15/10")
+  if (!ehRotina) {
+    const regexDataBr = /(?:^|\s)(?:dia\s+)?(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?(?=\s|$)/i;
+    const matchDataBr = texto.match(regexDataBr);
+    if (matchDataBr) {
+      const d = String(matchDataBr[1]).padStart(2, '0');
+      const m = String(matchDataBr[2]).padStart(2, '0');
+      const anoAtual = new Date().getFullYear();
+      const anoStr = matchDataBr[3]
+        ? (matchDataBr[3].length === 2 ? `20${matchDataBr[3]}` : matchDataBr[3])
+        : String(anoAtual);
+
+      proximaData = `${anoStr}-${m}-${d}`;
+      texto = texto.replace(matchDataBr[0], '').trim();
+      if (horario) {
+        tipo = TIPOS_TAREFA.AGENDADO;
       }
     }
-    texto = texto.replace(matchTodo[0], '').trim();
   }
 
-  // Classificação final: Rotina (se tem frequência) vs Agenda (se tem horário e não tem frequência)
+  // 6. Configuração Final de Rotina vs Agenda vs Foco
   if (ehRotina) {
     tipo = TIPOS_TAREFA.CADENCIA;
-    if (!proximaData) {
-      proximaData = formatarDataISO(new Date());
+    if (!dataInicio) {
+      dataInicio = formatarDataISO(new Date());
     }
-    cadencia = { intervaloDias };
+    proximaData = dataInicio;
+    cadencia = {
+      intervaloDias,
+      dataInicio,
+      dataLimite,
+    };
   } else if (horario) {
     tipo = TIPOS_TAREFA.AGENDADO;
     if (contexto === 'geral') {
@@ -256,7 +324,7 @@ export function processarInputRapido(textoBruto) {
     }
   }
 
-  // 6. Seleção de Ícone
+  // 7. Seleção de Ícone
   let icone = tipo === TIPOS_TAREFA.AGENDADO ? 'Clock' : 'Circle';
   const textoMinusculo = texto.toLowerCase();
   for (const [chave, iconeNome] of Object.entries(MAPA_ICONES)) {

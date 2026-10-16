@@ -45,12 +45,11 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
     return `em ${h}h ${m > 0 ? `${m}m` : ''}`;
   };
 
-  const rotinaAtrasada = (item) => {
+  const rotinaPendenteOuAtrasada = (item) => {
+    // Alerta de dia limite atingido
+    if (item.cadencia?.dataLimite && item.cadencia.dataLimite <= hojeISO) return true;
+    // Legado ou rotina vencida
     if (item.proximaData && item.proximaData < hojeISO) return true;
-    if (item.horario) {
-      const minAlvo = converterParaMinutos(item.horario);
-      return minAlvo !== null && minutosAtuais > minAlvo;
-    }
     return false;
   };
 
@@ -63,14 +62,22 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
     })
     .sort((a, b) => (a.horario || '').localeCompare(b.horario || ''));
 
-  // 2. Rotina: ativadas hoje e ordenadas estritamente pela Fila de Rotina
+  // 2. Rotina: ativadas a partir de dataInicio e ordenadas com dia limite no topo
   const rotinaTarefas = tarefas
     .filter((t) => {
       if (t.tipo !== TIPOS_TAREFA.CADENCIA || t.concluido) return false;
-      if (!t.proximaData) return true;
-      return t.proximaData <= hojeISO;
+      const inicio = t.cadencia?.dataInicio || t.proximaData;
+      if (!inicio) return true;
+      return inicio <= hojeISO;
     })
-    .sort((a, b) => (a.ordemFila || 0) - (b.ordemFila || 0));
+    .sort((a, b) => {
+      const limiteA = a.cadencia?.dataLimite && a.cadencia.dataLimite <= hojeISO;
+      const limiteB = b.cadencia?.dataLimite && b.cadencia.dataLimite <= hojeISO;
+      // Se atingiu o limite, sobe para o 1º lugar
+      if (limiteA && !limiteB) return -1;
+      if (!limiteA && limiteB) return 1;
+      return (a.ordemFila || 0) - (b.ordemFila || 0);
+    });
 
   // 3. Foco: 1 principal + 2 no radar (total 3)
   const filaFoco = tarefas
@@ -132,7 +139,7 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
         {rotinaTarefas.length > 0 ? (
           <div className="h-[154px] lg:h-full lg:flex-1 overflow-y-auto space-y-2 no-scrollbar pr-0.5">
             {rotinaTarefas.map((item) => {
-              const atrasado = rotinaAtrasada(item);
+              const pendente = rotinaPendenteOuAtrasada(item);
               return (
                 <div
                   key={item.id}
@@ -146,9 +153,9 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
                     <DynamicIcon name={item.icone} size={18} className={`shrink-0 ${THEME.rotina.icone}`} />
                     <span className={`text-sm font-medium truncate ${THEME.rotina.texto}`}>{item.titulo}</span>
                   </div>
-                  {atrasado && (
+                  {pendente && (
                     <span className={`text-[11px] px-2 py-0.5 rounded border font-medium shrink-0 ${THEME.rotina.alertaAtrasado}`}>
-                      Pendente {item.horario ? `• ${item.horario}` : ''}
+                      Pendente
                     </span>
                   )}
                 </div>
@@ -173,7 +180,7 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
           </span>
         </div>
 
-        {/* Card Principal de Foco (Intacto) */}
+        {/* Card Principal de Foco */}
         {cardPrincipal ? (
           <div className={`px-3.5 py-2.5 rounded-xl border shadow-sm flex flex-col shrink-0 ${THEME.foco.principalBg} ${THEME.foco.principalBorder}`}>
             <div className="flex items-center gap-2.5">
@@ -216,7 +223,7 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
           </div>
         )}
 
-        {/* Cards no Radar (Mesmo tamanho aumentado dos cards de Agenda e Rotina) */}
+        {/* Cards no Radar */}
         {cardsRadar.length > 0 && (
           <div className="shrink-0 flex flex-col lg:flex-1 lg:min-h-0">
             <span className={`text-[11px] font-semibold uppercase tracking-wide my-1.5 shrink-0 ${THEME.foco.radarTitulo}`}>

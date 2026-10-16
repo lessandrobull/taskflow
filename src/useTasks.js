@@ -144,12 +144,34 @@ export function useTasks() {
 
     if (itemAtual.tipo === TIPOS_TAREFA.CADENCIA) {
       const intervalo = itemAtual.cadencia?.intervaloDias || 7;
-      const proxima = new Date();
-      proxima.setDate(proxima.getDate() + intervalo);
+      let novaDataInicio = null;
+      let novaDataLimite = null;
+      let proxima = new Date();
+
+      if (itemAtual.cadencia?.dataInicio && itemAtual.cadencia?.dataLimite) {
+        const dtIni = new Date(`${itemAtual.cadencia.dataInicio}T00:00:00`);
+        const dtLim = new Date(`${itemAtual.cadencia.dataLimite}T00:00:00`);
+        dtIni.setDate(dtIni.getDate() + intervalo);
+        dtLim.setDate(dtLim.getDate() + intervalo);
+        novaDataInicio = formatarDataISO(dtIni);
+        novaDataLimite = formatarDataISO(dtLim);
+        proxima = dtIni;
+      } else {
+        proxima.setDate(proxima.getDate() + intervalo);
+      }
+
+      const novaCadencia = itemAtual.cadencia
+        ? {
+            ...itemAtual.cadencia,
+            ...(novaDataInicio && { dataInicio: novaDataInicio }),
+            ...(novaDataLimite && { dataLimite: novaDataLimite }),
+          }
+        : null;
 
       atualizacao = {
         concluido: false,
         proximaData: formatarDataISO(proxima),
+        cadencia: novaCadencia,
         concluidoEm: new Date().toISOString(),
       };
     } else {
