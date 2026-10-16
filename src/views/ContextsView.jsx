@@ -197,7 +197,7 @@ function NoPastaMobile({
 
   const iniciarEdicao = (tarefa) => {
     setEditandoId(tarefa.id);
-    setTextoEdicao(tarefa.titulo);
+    setTextoEdicao(reconstruirTextoTarefa(tarefa));
   };
 
   const salvarEdicao = (id) => {
@@ -209,7 +209,7 @@ function NoPastaMobile({
           icone: parsed.icone !== 'Circle' ? parsed.icone : undefined,
           tipo: parsed.tipo,
           horario: parsed.horario,
-          cadencia: parsed.cadencia,
+          cadencia: parsed.cadencia ? { ...parsed.cadencia, textoOriginal: textoEdicao.trim() } : null,
           proximaData: parsed.proximaData,
           contexto: parsed.contexto !== 'geral' ? parsed.contexto : undefined,
         });
@@ -223,6 +223,10 @@ function NoPastaMobile({
 
   const subpastasOrdenadas = Object.values(no.filhos).sort((a, b) =>
     a.nome.localeCompare(b.nome)
+  );
+
+  const tarefasOrdenadas = [...no.tarefas].sort((a, b) =>
+    (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR')
   );
 
   return (
@@ -298,7 +302,7 @@ function NoPastaMobile({
 
           {temTarefas && (
             <div className="space-y-1.5 pr-2">
-              {no.tarefas.map((tarefa) => (
+              {tarefasOrdenadas.map((tarefa) => (
                 <CardTarefaContexto
                   key={tarefa.id}
                   tarefa={tarefa}
@@ -409,6 +413,58 @@ function NoPastaDesktopSidebar({
   );
 }
 
+
+function reconstruirTextoTarefa(tarefa) {
+  if (!tarefa) return '';
+  if (tarefa.cadencia?.textoOriginal) return tarefa.cadencia.textoOriginal;
+  if (tarefa.textoOriginal) return tarefa.textoOriginal;
+
+  const partes = [tarefa.titulo?.trim() || ''];
+
+  if (tarefa.horario) {
+    partes.push(`às ${tarefa.horario}`);
+  }
+
+  const cad = tarefa.cadencia;
+  if (cad && typeof cad === 'object') {
+    const diasSemanaMap = {
+      0: 'domingo', 1: 'segunda', 2: 'terça', 3: 'quarta',
+      4: 'quinta', 5: 'sexta', 6: 'sábado'
+    };
+    if (cad.dataInicio && cad.dataLimite) {
+      try {
+        const [anoIni, mesIni, diaIni] = cad.dataInicio.split('-').map(Number);
+        const [anoLim, mesLim, diaLim] = cad.dataLimite.split('-').map(Number);
+        const dtIni = new Date(anoIni, mesIni - 1, diaIni);
+        const dtLim = new Date(anoLim, mesLim - 1, diaLim);
+        const diaIniNome = diasSemanaMap[dtIni.getDay()];
+        const diaLimNome = diasSemanaMap[dtLim.getDay()];
+        partes.push(`de ${diaIniNome} à ${diaLimNome}`);
+      } catch (e) {
+        // fallback
+      }
+    }
+
+    if (cad.frequencia === 'diaria' || cad.intervaloDias === 1) {
+      partes.push('diariamente');
+    } else if (cad.intervaloDias === 7) {
+      partes.push('1x por semana');
+    } else if (cad.intervaloDias === 15) {
+      partes.push('quinzenalmente');
+    } else if (cad.intervaloDias === 30) {
+      partes.push('mensalmente');
+    } else if (cad.intervaloDias > 1) {
+      partes.push(`a cada ${cad.intervaloDias} dias`);
+    }
+  }
+
+  if (tarefa.contexto && tarefa.contexto !== 'geral') {
+    partes.push(`#${tarefa.contexto}`);
+  }
+
+  return partes.join(' ');
+}
+
 export default function ContextsView({
   tarefas,
   adicionarTarefa,
@@ -468,10 +524,12 @@ export default function ContextsView({
     });
   };
 
-  const tarefasDoContextoDesktop = tarefasAtivas.filter((t) => {
-    const ctx = (t.contexto || 'geral').toLowerCase().trim();
-    return ctx === caminhoSelecionado || ctx.startsWith(`${caminhoSelecionado}/`);
-  });
+  const tarefasDoContextoDesktop = tarefasAtivas
+    .filter((t) => {
+      const ctx = (t.contexto || 'geral').toLowerCase().trim();
+      return ctx === caminhoSelecionado || ctx.startsWith(`${caminhoSelecionado}/`);
+    })
+    .sort((a, b) => (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR'));
 
   const handleCriarItemDesktop = (e) => {
     e.preventDefault();
@@ -502,7 +560,7 @@ export default function ContextsView({
 
   const iniciarEdicaoDesktop = (tarefa) => {
     setEditandoIdDesktop(tarefa.id);
-    setTextoEdicaoDesktop(tarefa.titulo);
+    setTextoEdicaoDesktop(reconstruirTextoTarefa(tarefa));
   };
 
   const salvarEdicaoDesktop = (id) => {
@@ -514,7 +572,7 @@ export default function ContextsView({
           icone: parsed.icone !== 'Circle' ? parsed.icone : undefined,
           tipo: parsed.tipo,
           horario: parsed.horario,
-          cadencia: parsed.cadencia,
+          cadencia: parsed.cadencia ? { ...parsed.cadencia, textoOriginal: textoEdicaoDesktop.trim() } : null,
           proximaData: parsed.proximaData,
           contexto: parsed.contexto !== 'geral' ? parsed.contexto : undefined,
         });
