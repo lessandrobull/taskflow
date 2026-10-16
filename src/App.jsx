@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTasks } from './useTasks';
 import { useNotes } from './useNotes';
 import TodayView from './views/TodayView';
@@ -10,7 +10,13 @@ import QuickInput from './components/QuickInput';
 import { THEME } from './colors';
 
 export default function App() {
-  const [abaAtiva, setAbaAtiva] = useState('hoje');
+  const [abaAtiva, setAbaAtiva] = useState(() => {
+    return sessionStorage.getItem('taskflow_aba_ativa') || 'hoje';
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem('taskflow_aba_ativa', abaAtiva);
+  }, [abaAtiva]);
   const {
     tarefas,
     toggleConcluir,
