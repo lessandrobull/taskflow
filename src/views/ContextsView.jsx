@@ -36,20 +36,20 @@ function CardTarefaContexto({
   const estiloCard = ehAgendado
     ? `${THEME.contextos.agendaBg} ${THEME.contextos.agendaBorder}`
     : ehRotina
-    ? `${THEME.contextos.rotinaBg} ${THEME.contextos.rotinaBorder}`
-    : `${THEME.contextos.tarefaBg} ${THEME.contextos.tarefaBorder}`;
+      ? `${THEME.contextos.rotinaBg} ${THEME.contextos.rotinaBorder}`
+      : `${THEME.contextos.tarefaBg} ${THEME.contextos.tarefaBorder}`;
 
   const estiloTexto = ehAgendado
     ? THEME.contextos.agendaTexto
     : ehRotina
-    ? THEME.contextos.rotinaTexto
-    : THEME.contextos.tarefaTexto;
+      ? THEME.contextos.rotinaTexto
+      : THEME.contextos.tarefaTexto;
 
   const estiloIcone = ehAgendado
     ? THEME.contextos.agendaIcone
     : ehRotina
-    ? THEME.contextos.rotinaIcone
-    : THEME.contextos.tarefaIcone;
+      ? THEME.contextos.rotinaIcone
+      : THEME.contextos.tarefaIcone;
 
   const getBadgePrioridade = (t) => {
     const p = t.prioridade;
@@ -361,11 +361,10 @@ function NoPastaDesktopSidebar({
   return (
     <div className="space-y-0.5">
       <div
-        className={`flex items-center justify-between py-1.5 px-2.5 rounded-lg cursor-pointer transition-colors ${
-          selecionada
+        className={`flex items-center justify-between py-1.5 px-2.5 rounded-lg cursor-pointer transition-colors ${selecionada
             ? 'bg-zinc-200/80 text-zinc-950 font-bold border border-zinc-300'
             : 'hover:bg-zinc-100 text-zinc-700'
-        }`}
+          }`}
         onClick={() => setCaminhoSelecionado(no.caminhoCompleto)}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">

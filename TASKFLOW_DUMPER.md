@@ -36,7 +36,6 @@ Snapshot técnico gerado automaticamente com a estrutura e código da plataforma
 ./src/views/NotesView.jsx
 ./src/views/TodayView.jsx
 ./TASKFLOW_MASTER.md
-./TASKFLOW_MESTRE.md
 ./vite.config.js
 
 ## 2. CÓDIGO FONTE INTEGRAL
@@ -4346,86 +4345,6 @@ echo "Concluído! Arquivo $OUTPUT pronto para leitura."
 1. Avaliar se as alterações realizadas modificaram integrações externas (Supabase, Google Calendar, etc.), dependências estruturais ou fluxos de trabalho descritos neste documento.
 2. Caso identifique divergências, fornecer explicitamente ao usuário a versão revisada e atualizada do `TASKFLOW_MASTER.md`.
 3. Instruir o usuário a gerar uma nova versão do `TASKFLOW_DUMPER.md` caso arquivos tenham sido criados, movidos ou excluídos.
-
-
-### 📄 ARQUIVO: ./TASKFLOW_MESTRE.md
-# 🧠 TASKFLOW_MESTRE.md
-**Documentação Arquitetural e Regras de Negócio - TaskFlow**
-
-## 1. Visão Geral do Sistema
-O TaskFlow é um Progressive Web App (PWA) de gestão de tarefas minimalista baseado em Processamento de Linguagem Natural (NLP). A plataforma não utiliza formulários complexos; o usuário digita em linguagem natural no `QuickInput`, e o sistema processa (via Regex no `parser.js`) para categorizar automaticamente a tarefa em **Agenda**, **Rotina** ou fila de **Foco**, extraindo horários, dias, frequências e contextos (tags).
-
-## 2. Stack Tecnológico
-- **Frontend:** React 19.2.8, React DOM 19.2.8.
-- **Build & Server:** Vite 8.3.0, Vite PWA Plugin 2.0.0 (limite de cache 6MB, standalone, theme_color `#09090b`).
-- **Estilização:** Tailwind CSS 4.3.3 (via `@tailwindcss/vite`).
-- **Ícones:** Phosphor Icons React 2.1.10.
-- **BaaS (Backend as a Service):** Supabase JS 2.117.3 (URL e Key fixados no client).
-- **Integração Externa:** Google Calendar (via endpoint de Google Apps Script no `calendar.js`).
-
-## 3. Estrutura de Diretórios e Armazenamento Local
-- `sessionStorage`: `taskflow_aba_ativa` (Mantém a última tela acessada).
-- `localStorage`: 
-  - `taskflow_tarefas_v1` (Fallback de dados quando Supabase falha).
-  - `taskflow_notas_v1` (Persistência exclusiva das notas, não vai pro DB).
-  - `taskflow_pastas_abertas_v1` (Guarda o toggle de pastas no ContextsView).
-
-## 4. Design System (`colors.js`)
-O aplicativo utiliza uma codificação de cores semântica estrita:
-- **Tema Geral / App:** Zinc 900 (fundo branco, texto chumbo). PWA em `#09090b`.
-- **Agenda:** Azul Celeste (`sky-700` a `sky-50`).
-- **Rotina:** Violeta/Púrpura (`purple-700` a `purple-50`).
-- **Foco:** Verde Esmeralda (`emerald-800` a `emerald-50`).
-- **Notas:** Âmbar/Laranja (`amber-800` a `amber-50`).
-
-## 5. Regras de Negócio e Roteamento (A Regra de 3)
-A plataforma categoriza a entrada do usuário estritamente em três baldes comportamentais no `parser.js`:
-
-1.  **Agenda (`tipo: 'agendado'`):**
-    *   **Gatilhos NLP:** Horários (`@14h`, `às 15:30`) ou Datas fixas sem repetição (`dia 15/10`).
-    *   **Ordenação (TodayView):** Cronológica crescente. Eventos "Dia Todo" (sem horário) fixados no topo[cite: 10]. Calcula o tempo restante ao vivo (ex: `em 2h 15m`)[cite: 10]. Eventos do Google Calendar entram aqui com id `gcal-`.
-
-2.  **Rotina (`tipo: 'cadencia'`):**
-    *   **Gatilhos NLP:** Repetições (`todo sábado`, `todos os dias`, `a cada 14 dias`, `de segunda à sexta`, `semanalmente`).
-    *   **Ordenação (TodayView):** 1º Atrasadas/Pendentes (data limite expirada); 2º Peso da Prioridade (P1 > P2 > P3); 3º Ordem de Fila (`ordemFila`)[cite: 10]. 
-    *   **Comportamento:** Ao concluir, recalibra para a `proximaData` com base no `intervaloDias`[cite: 8].
-
-3.  **Foco (`tipo: 'foco'`):**
-    *   **Gatilhos NLP:** Qualquer input avulso sem regras de Agenda ou Rotina. Padrão inicial cai aqui com prioridade P2.
-    *   **Ordenação (TodayView):** Estritamente pela propriedade `ordemFila` (Crescente). Exibe apenas 1 card principal e 2 no "radar"[cite: 10].
-
-## 6. Lógica de Ícones e Árvore de Contextos (`tree.js` e `parser.js`)
-- Os contextos funcionam como pastas (`#casa/limpeza`).
-- Existe um mapa estrito (`MAPA_ICONES_PASTAS` no `parser.js`) com 17 ícones[cite: 14]. A resolução é por **Cascata Bottom-up**: Em `#casa/manutencao`, testa `manutencao` primeiro; se falhar, testa `casa`[cite: 14].
-- **Regra da Tela ContextsView:** Filtra ESTRITAMENTE tarefas não concluídas (`!t.concluido`)[cite: 11]. Tarefas concluídas desaparecem da árvore visual de contextos.
-
-## 7. Modelagem de Dados
-### Entidade: `tarefas` (Supabase `public.tarefas` & LocalStorage `taskflow_tarefas_v1`)
-- `id` (String - PK): Timestamp (`task-1788743540`) ou GCal (`gcal-[id]`).
-- `titulo` (String): Texto limpo.
-- `icone` (String): Phosphor Icon (ex: `Clock`, `Cpu`). Padrão: `ClipboardText`.
-- `contexto` (String): Tag. Padrão: `geral`.
-- `tipo` (String): `agendado` | `cadencia` | `foco`.
-- `horario` (String|Null): `HH:MM` ou nulo.
-- `cadencia` (Object|Null): `{ intervaloDias: Int, dataInicio: ISO, dataLimite: ISO, textoOriginal: String }`.
-- `proximaData` (String|Null): Data ISO (`YYYY-MM-DD`).
-- `prioridade` (String): `p1` | `p2` | `p3`.
-- `ordemFila` (Integer): Posição numérica da tarefa dentro da sua fila.
-- `concluido` (Boolean): Flag de finalização.
-- `concluidoEm` (String|Null): Timestamp ISO da conclusão.
-
-### Entidade: `notas` (LocalStorage `taskflow_notas_v1` EXCLUSIVO)
-- `id` (String), `titulo` (String), `conteudo` (String), `atualizadoEm` (String - Timestamp ISO)[cite: 7].
-
-## 8. Sincronização e Estado (Realtime via Supabase)
-- **Carga Inicial:** `select('*')`. Se vazio e houver local, `upsert` em lote.
-- **WebSocket:** `channel: 'tarefas-realtime'`. Escuta `INSERT`, `UPDATE`, `DELETE`[cite: 8]. Ao receber payload, atualiza o estado React garantindo multi-telas em sincronia[cite: 8].
-- **Fila Global:** A tela `GlobalQueueView` permite gerenciar filas (mover para cima/baixo), limpar concluídos e alterar prioridades[cite: 12]. Tais ações disparam `upsert` no Supabase e state local simultaneamente[cite: 8].
-
-## 9. Mecânicas Únicas
-- **Editor de Notas:** Detecta linhas > 2 caracteres[cite: 9]. Checa `tarefasAtivas` (via `verificarSeExiste`) se a linha já foi convertida em tarefa (muda botão para "Adicionada")[cite: 9].
-- **Formatação de Data Pura:** Lógica nativa em `formatarDataISO(data)` para garantir fuso horário sem dependências externas (ex: moment.js).
-- **QuickInput Global:** O atalho `/` foca no input superior independente de onde o usuário navegue (ignora se foco já estiver num input/textarea)[cite: 20].
 
 
 ### 📄 ARQUIVO: ./vite.config.js
