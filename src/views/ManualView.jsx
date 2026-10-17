@@ -140,9 +140,9 @@ export default function ManualView() {
   ];
 
   return (
-    <div className="h-full flex flex-col overflow-hidden pb-16 px-1 max-w-4xl mx-auto">
+    <div className="h-full w-full max-w-full min-w-0 flex flex-col overflow-hidden max-w-4xl mx-auto">
       {/* 1. CABEÇALHO */}
-      <header className="shrink-0 pt-1 pb-2">
+      <header className="shrink-0 pt-1 pb-1 w-full max-w-full min-w-0">
         <h1 className="text-base font-bold tracking-tight text-zinc-900">
           Manual de Instruções
         </h1>
@@ -154,15 +154,15 @@ export default function ManualView() {
           O TaskFlow organiza seu dia a dia por meio de linguagem natural. Basta digitar o que você precisa fazer no campo superior e o sistema interpreta datas, horários e frequências de forma automática.
         </p>
 
-        {/* 2. BARRA DE BOTÕES OBJETIVA */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2 pb-0.5">
+        {/* 2. BARRA DE BOTÕES: Grade de 6 no celular e flex no PC */}
+        <div className="grid grid-cols-6 gap-1 w-full sm:flex sm:items-center sm:gap-1.5 sm:w-auto pt-2 pb-0.5">
           {abas.map(({ id, label, corAtiva }) => {
             const ativo = secaoAtiva === id;
             return (
               <button
                 key={id}
                 onClick={() => setSecaoAtiva(id)}
-                className={`px-3 py-1.5 rounded-lg text-xs transition-all border shrink-0 ${
+                className={`w-full sm:w-auto px-0.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-medium text-center transition-all border ${
                   ativo
                     ? corAtiva
                     : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900'
@@ -175,8 +175,8 @@ export default function ManualView() {
         </div>
       </header>
 
-      {/* 3. CARD CONTAINER FIXO COM ROLAGEM INTERNA */}
-      <main className="flex-1 min-h-0 bg-white border border-zinc-200 rounded-2xl shadow-sm p-4 sm:p-5 overflow-y-auto no-scrollbar">
+      {/* 3. CARD CONTAINER FIXO: Encaixe simétrico acima da barra inferior */}
+      <main className="flex-1 min-h-0 w-full max-w-full min-w-0 bg-white border border-zinc-200 rounded-2xl shadow-sm p-3.5 sm:p-5 mt-2 mb-2 overflow-y-auto no-scrollbar break-words">
 
         {/* SEÇÃO 1: REGRA */}
         {secaoAtiva === 'regra' && (
@@ -436,7 +436,6 @@ export default function ManualView() {
                       </p>
                     </div>
 
-                    {/* Ícone real renderizado com DynamicIcon */}
                     <div className="w-8 h-8 rounded-lg bg-white border border-zinc-200/90 shadow-2xs flex items-center justify-center text-zinc-800 shrink-0">
                       <DynamicIcon name={item.icone} size={18} weight="bold" />
                     </div>
