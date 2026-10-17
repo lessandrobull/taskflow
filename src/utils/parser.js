@@ -1,55 +1,103 @@
 import { TIPOS_TAREFA, PRIORIDADES } from '../types.js';
 
-const MAPA_ICONES = {
-  aula: 'ChalkboardTeacher',
-  aluno: 'ChalkboardTeacher',
-  ensino: 'ChalkboardTeacher',
-  class: 'ChalkboardTeacher',
-
-  medico: 'FirstAid',
-  médico: 'FirstAid',
-  dentista: 'FirstAid',
-  consulta: 'FirstAid',
-  hospital: 'FirstAid',
-  remedio: 'Pill',
-  remédio: 'Pill',
-
-  limpeza: 'Broom',
-  limpar: 'Broom',
-  pano: 'Broom',
-  banheiro: 'Broom',
-  quintal: 'Broom',
-  lixo: 'Trash',
-  casa: 'House',
-  obra: 'Hammer',
-  conserto: 'Wrench',
-  ferramenta: 'Wrench',
-  torneira: 'Drop',
-
+export const MAPA_ICONES_PASTAS = {
+  // Pessoal
+  pessoal: 'User',
+  // Treino
   treino: 'Barbell',
+  treinos: 'Barbell',
   academia: 'Barbell',
-  corrida: 'PersonSimpleRun',
-  correr: 'PersonSimpleRun',
-  agua: 'Drop',
-  meditar: 'Heartbeat',
+  musculacao: 'Barbell',
+  musculação: 'Barbell',
 
+  // Finanças
+  financas: 'CurrencyDollar',
+  finanças: 'CurrencyDollar',
+  financeiro: 'CurrencyDollar',
+  contas: 'CurrencyDollar',
+
+  // Viagens
+  viagem: 'AirplaneTilt',
+  viagens: 'AirplaneTilt',
+
+  // Limpeza
+  limpeza: 'Broom',
+  faxina: 'Broom',
+
+  // Manutenção
+  manutencao: 'Hammer',
+  manutenção: 'Hammer',
+
+  // Rua
+  rua: 'MapPin',
+
+  // PC / Computador
   pc: 'Cpu',
   computador: 'Cpu',
-  codigo: 'Cpu',
-  código: 'Cpu',
-  bug: 'Cpu',
-  deploy: 'Cpu',
-  app: 'Cpu',
-  software: 'Cpu',
-  programacao: 'Cpu',
-  programação: 'Cpu',
-  quizhub: 'Cpu',
-  hos: 'Cpu',
+
+  // Agenda
+  agenda: 'Clock',
+
+  // Comprar
+  comprar: 'ShoppingCart',
+  compras: 'ShoppingCart',
+
+  // Estudos
+  estudos: 'BookOpen',
   estudo: 'BookOpen',
-  ler: 'BookOpen',
-  livro: 'BookOpen',
-  reuniao: 'UsersThree',
+
+  // Higiene
+  higiene: 'HandSoap',
+  cuidados: 'HandSoap',
+
+  // Saúde
+  saude: 'FirstAid',
+  saúde: 'FirstAid',
+  medico: 'FirstAid',
+  médico: 'FirstAid',
+
+  // Alimentação
+  alimentacao: 'ForkKnife',
+  alimentação: 'ForkKnife',
+  comida: 'ForkKnife',
+  refeicao: 'ForkKnife',
+  refeição: 'ForkKnife',
+  mercado: 'ForkKnife',
+
+  // Lazer
+  lazer: 'Ticket',
+  diversao: 'Ticket',
+  diversão: 'Ticket',
+
+  // Casa
+  casa: 'House',
 };
+
+export function resolverIconePorContexto(contexto, tipo) {
+  if (tipo === TIPOS_TAREFA.AGENDADO && (!contexto || contexto === 'geral' || contexto === 'agenda')) {
+    return 'Clock';
+  }
+
+  if (!contexto || contexto.trim().toLowerCase() === 'geral') {
+    return 'ClipboardText';
+  }
+
+  // Cascata bottom-up: testa da subpasta mais profunda até a raiz
+  const niveis = contexto
+    .toLowerCase()
+    .split('/')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .reverse();
+
+  for (const sub of niveis) {
+    if (MAPA_ICONES_PASTAS[sub]) {
+      return MAPA_ICONES_PASTAS[sub];
+    }
+  }
+
+  return 'ClipboardText';
+}
 
 const DIAS_SEMANA = {
   domingo: 0,
@@ -324,15 +372,8 @@ export function processarInputRapido(textoBruto) {
     }
   }
 
-  // 7. Seleção de Ícone
-  let icone = tipo === TIPOS_TAREFA.AGENDADO ? 'Clock' : 'Circle';
-  const textoMinusculo = texto.toLowerCase();
-  for (const [chave, iconeNome] of Object.entries(MAPA_ICONES)) {
-    if (textoMinusculo.includes(chave)) {
-      icone = iconeNome;
-      break;
-    }
-  }
+  // 7. Seleção de Ícone baseada estritamente em pastas (cascata bottom-up)
+  const icone = resolverIconePorContexto(contexto, tipo);
 
   const tituloLimpo = texto.replace(/\s{2,}/g, ' ').replace(/^[-–—,]\s*/, '').trim();
 

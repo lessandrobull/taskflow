@@ -363,7 +363,7 @@ export function useTasks() {
 
   const adicionarTarefa = ({
     titulo,
-    icone = 'Circle',
+    icone = 'ClipboardText',
     contexto = 'geral',
     tipo = TIPOS_TAREFA.FOCO,
     horario = null,

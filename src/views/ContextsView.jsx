@@ -12,7 +12,7 @@ import {
   Tag,
 } from '@phosphor-icons/react';
 import DynamicIcon from '../components/DynamicIcon';
-import { processarInputRapido } from '../utils/parser';
+import { processarInputRapido, resolverIconePorContexto } from '../utils/parser';
 import { construirArvoreContextos } from '../utils/tree';
 import { PRIORIDADES, TIPOS_TAREFA } from '../types';
 import { THEME } from '../colors';
@@ -186,7 +186,7 @@ function NoPastaMobile({
     onAdicionarNaPasta({
       ...parsed,
       tipo: ehContextoAgenda ? TIPOS_TAREFA.AGENDADO : parsed.tipo,
-      icone: ehContextoAgenda ? 'Clock' : parsed.icone,
+      icone: ehContextoAgenda ? 'Clock' : resolverIconePorContexto(contextoDestino, parsed.tipo),
       contexto: contextoDestino,
     });
 
@@ -206,7 +206,7 @@ function NoPastaMobile({
       if (parsed && parsed.titulo) {
         onEditarTarefa(id, {
           titulo: parsed.titulo,
-          icone: parsed.icone !== 'Circle' ? parsed.icone : undefined,
+          icone: parsed.icone,
           tipo: parsed.tipo,
           horario: parsed.horario,
           cadencia: parsed.cadencia ? { ...parsed.cadencia, textoOriginal: textoEdicao.trim() } : null,
@@ -349,8 +349,10 @@ function NoPastaDesktopSidebar({
   togglePasta,
 }) {
   const temFilhos = Object.keys(no.filhos).length > 0;
-  const aberta = pastasAbertas[no.caminhoCompleto] ?? true;
+  const aberta = pastasAbertas[no.caminhoCompleto] ?? false;
   const selecionada = caminhoSelecionado === no.caminhoCompleto;
+
+  const estaAberta = temFilhos ? aberta : selecionada;
 
   const subpastasOrdenadas = Object.values(no.filhos).sort((a, b) =>
     a.nome.localeCompare(b.nome)
@@ -367,21 +369,26 @@ function NoPastaDesktopSidebar({
         onClick={() => setCaminhoSelecionado(no.caminhoCompleto)}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          {temFilhos ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (temFilhos) {
                 togglePasta(no.caminhoCompleto);
-              }}
-              className="p-0.5 text-zinc-400 hover:text-zinc-700"
-            >
-              {aberta ? <CaretDown size={11} weight="bold" /> : <CaretRight size={11} weight="bold" />}
-            </button>
-          ) : (
-            <span className="w-2.5" />
-          )}
+              } else {
+                setCaminhoSelecionado(no.caminhoCompleto);
+              }
+            }}
+            className="p-0.5 text-zinc-400 hover:text-zinc-700"
+            title={temFilhos ? (aberta ? 'Recolher subpastas' : 'Expandir subpastas') : 'Selecionar pasta'}
+          >
+            {temFilhos && aberta ? (
+              <CaretDown size={11} weight="bold" />
+            ) : (
+              <CaretRight size={11} weight="bold" />
+            )}
+          </button>
 
-          {aberta ? (
+          {estaAberta ? (
             <FolderOpen size={15} weight="regular" className={selecionada ? 'text-zinc-900' : 'text-zinc-400'} />
           ) : (
             <Folder size={15} weight="regular" className={selecionada ? 'text-zinc-900' : 'text-zinc-400'} />
@@ -550,7 +557,7 @@ export default function ContextsView({
     adicionarTarefa({
       ...parsed,
       tipo: ehContextoAgenda ? TIPOS_TAREFA.AGENDADO : parsed.tipo,
-      icone: ehContextoAgenda ? 'Clock' : parsed.icone,
+      icone: ehContextoAgenda ? 'Clock' : resolverIconePorContexto(contextoDestino, parsed.tipo),
       contexto: contextoDestino,
     });
 
@@ -569,7 +576,7 @@ export default function ContextsView({
       if (parsed && parsed.titulo) {
         editarTarefa(id, {
           titulo: parsed.titulo,
-          icone: parsed.icone !== 'Circle' ? parsed.icone : undefined,
+          icone: parsed.icone,
           tipo: parsed.tipo,
           horario: parsed.horario,
           cadencia: parsed.cadencia ? { ...parsed.cadencia, textoOriginal: textoEdicaoDesktop.trim() } : null,
