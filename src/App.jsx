@@ -28,6 +28,7 @@ export default function App() {
     moverParaCima,
     moverParaBaixo,
     alternarPrioridade,
+    organizarFilaPorPrioridade,
     adicionarTarefa,
   } = useTasks();
 
@@ -75,6 +76,7 @@ export default function App() {
             moverParaCima={moverParaCima}
             moverParaBaixo={moverParaBaixo}
             alternarPrioridade={alternarPrioridade}
+            organizarFilaPorPrioridade={organizarFilaPorPrioridade}
             removerTarefa={removerTarefa}
             limparConcluidos={limparConcluidos}
           />

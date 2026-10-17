@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CaretUp, CaretDown, Check, Lightning, ArrowCounterClockwise, CheckCircle, Trash } from '@phosphor-icons/react';
+import { CaretUp, CaretDown, Check, Lightning, ArrowCounterClockwise, CheckCircle, Trash, SortAscending } from '@phosphor-icons/react';
 import DynamicIcon from '../components/DynamicIcon';
 import { TIPOS_TAREFA, PRIORIDADES } from '../types';
 import { THEME } from '../colors';
@@ -37,9 +37,9 @@ function ItemFila({
       : 'text-zinc-600';
 
   return (
-    <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${estiloCard}`}>
-      <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
-        <div className="flex items-center justify-center w-5 font-mono text-xs shrink-0">
+    <div className={`flex items-center justify-between pl-2 pr-2 py-2.5 rounded-xl border transition-all ${estiloCard}`}>
+      <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-1">
+        <div className="flex items-center justify-center w-4 font-mono text-xs shrink-0">
           {isPrincipal ? (
             <Lightning
               size={15}
@@ -75,7 +75,7 @@ function ItemFila({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1 shrink-0">
         <button
           onClick={() => alternarPrioridade(item.id)}
           className={`px-1.5 py-0.5 rounded text-[10px] font-mono border uppercase tracking-wider transition-colors ${getBadgePrioridade(
@@ -87,11 +87,11 @@ function ItemFila({
           {item.prioridade.toUpperCase()}
         </button>
 
-        <div className="flex flex-col gap-0.5 border-l border-zinc-200 pl-2">
+        <div className="flex flex-col gap-0.5 border-l border-zinc-200 pl-1">
           <button
             onClick={() => moverParaCima(item.id)}
             disabled={index === 0}
-            className="p-1 text-zinc-400 hover:text-zinc-800 disabled:opacity-20 transition-colors"
+            className="p-0.5 text-zinc-400 hover:text-zinc-800 disabled:opacity-20 transition-colors"
             title="Mover para cima"
           >
             <CaretUp size={12} weight="bold" />
@@ -99,7 +99,7 @@ function ItemFila({
           <button
             onClick={() => moverParaBaixo(item.id)}
             disabled={index === total - 1}
-            className="p-1 text-zinc-400 hover:text-zinc-800 disabled:opacity-20 transition-colors"
+            className="p-0.5 text-zinc-400 hover:text-zinc-800 disabled:opacity-20 transition-colors"
             title="Mover para baixo"
           >
             <CaretDown size={12} weight="bold" />
@@ -108,7 +108,7 @@ function ItemFila({
 
         <button
           onClick={() => toggleConcluir(item.id)}
-          className={`p-1.5 ml-1 rounded-lg border border-transparent transition-colors ${
+          className={`p-1 rounded-lg border border-transparent transition-colors ${
             subAba === 'foco'
               ? 'text-zinc-400 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-200'
               : 'text-zinc-400 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-200'
@@ -175,6 +175,7 @@ export default function GlobalQueueView({
   moverParaCima,
   moverParaBaixo,
   alternarPrioridade,
+  organizarFilaPorPrioridade,
   removerTarefa,
   limparConcluidos,
 }) {
@@ -269,11 +270,33 @@ export default function GlobalQueueView({
                 <span>Limpar</span>
               </button>
             )}
-            <span className="text-xs font-mono font-medium text-zinc-500">
-              {subAba === 'foco' && `${filaFoco.length} tarefas`}
-              {subAba === 'rotina' && `${filaRotina.length} rituais`}
-              {subAba === 'concluido' && `${filaConcluido.length} concluídas`}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-mono font-medium text-zinc-500">
+                {subAba === 'foco' && `${filaFoco.length} tarefas`}
+                {subAba === 'rotina' && `${filaRotina.length} rituais`}
+                {subAba === 'concluido' && `${filaConcluido.length} concluídas`}
+              </span>
+              {subAba === 'foco' && (
+                <button
+                  onClick={() => organizarFilaPorPrioridade && organizarFilaPorPrioridade(TIPOS_TAREFA.FOCO)}
+                  disabled={filaFoco.length <= 1}
+                  className="p-1 rounded text-zinc-400 hover:text-emerald-700 hover:bg-emerald-50 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                  title="Organizar por prioridade (P1 > P2 > P3)"
+                >
+                  <SortAscending size={13} weight="bold" />
+                </button>
+              )}
+              {subAba === 'rotina' && (
+                <button
+                  onClick={() => organizarFilaPorPrioridade && organizarFilaPorPrioridade(TIPOS_TAREFA.CADENCIA)}
+                  disabled={filaRotina.length <= 1}
+                  className="p-1 rounded text-zinc-400 hover:text-purple-700 hover:bg-purple-50 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                  title="Organizar por prioridade (P1 > P2 > P3)"
+                >
+                  <SortAscending size={13} weight="bold" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -347,9 +370,19 @@ export default function GlobalQueueView({
                 Os 3 primeiros alimentam a tela Hoje
               </p>
             </div>
-            <span className="text-xs font-mono font-medium text-emerald-800">
-              {filaFoco.length}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-mono font-medium text-emerald-800">
+                {filaFoco.length}
+              </span>
+              <button
+                onClick={() => organizarFilaPorPrioridade && organizarFilaPorPrioridade(TIPOS_TAREFA.FOCO)}
+                disabled={filaFoco.length <= 1}
+                className="p-1 rounded text-zinc-400 hover:text-emerald-700 hover:bg-emerald-50 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                title="Organizar por prioridade (P1 > P2 > P3)"
+              >
+                <SortAscending size={13} weight="bold" />
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-1">
@@ -385,9 +418,19 @@ export default function GlobalQueueView({
                 Precedência dos rituais
               </p>
             </div>
-            <span className="text-xs font-mono font-medium text-purple-800">
-              {filaRotina.length}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-mono font-medium text-purple-800">
+                {filaRotina.length}
+              </span>
+              <button
+                onClick={() => organizarFilaPorPrioridade && organizarFilaPorPrioridade(TIPOS_TAREFA.CADENCIA)}
+                disabled={filaRotina.length <= 1}
+                className="p-1 rounded text-zinc-400 hover:text-purple-700 hover:bg-purple-50 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                title="Organizar por prioridade (P1 > P2 > P3)"
+              >
+                <SortAscending size={13} weight="bold" />
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-1">

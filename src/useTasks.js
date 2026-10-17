@@ -273,31 +273,44 @@ export function useTasks() {
 
     const fila = tarefas
       .filter((t) => t.tipo === itemAtual.tipo && !t.concluido)
-      .sort((a, b) => a.ordemFila - b.ordemFila);
+      .sort((a, b) => (Number(a.ordemFila) || 0) - (Number(b.ordemFila) || 0));
 
     const index = fila.findIndex((t) => t.id === id);
     if (index <= 0) return;
 
-    const itemAcima = fila[index - 1];
+    const novaFila = [...fila];
+    const itemAcima = novaFila[index - 1];
+    novaFila[index - 1] = itemAtual;
+    novaFila[index] = itemAcima;
 
-    const atual1 = { ...itemAtual, ordemFila: itemAcima.ordemFila };
-    const atual2 = { ...itemAcima, ordemFila: itemAtual.ordemFila };
+    const itensModificados = [];
+    const mapaNovasOrdens = new Map();
+
+    novaFila.forEach((t, i) => {
+      const novaOrdem = i + 1;
+      mapaNovasOrdens.set(t.id, novaOrdem);
+      if (t.ordemFila !== novaOrdem) {
+        itensModificados.push({ ...t, ordemFila: novaOrdem });
+      }
+    });
 
     setTarefas((prev) =>
-      prev.map((t) => {
-        if (t.id === itemAtual.id) return atual1;
-        if (t.id === itemAcima.id) return atual2;
-        return t;
-      })
+      prev.map((t) =>
+        mapaNovasOrdens.has(t.id)
+          ? { ...t, ordemFila: mapaNovasOrdens.get(t.id) }
+          : t
+      )
     );
 
-    (async () => {
-      try {
-        await supabase.from('tarefas').upsert([atual1, atual2]);
-      } catch (e) {
-        console.error('Falha ao reordenar tarefa no Supabase:', e);
-      }
-    })();
+    if (itensModificados.length > 0) {
+      (async () => {
+        try {
+          await supabase.from('tarefas').upsert(itensModificados);
+        } catch (e) {
+          console.error('Falha ao reordenar tarefa no Supabase:', e);
+        }
+      })();
+    }
   };
 
   const moverParaBaixo = (id) => {
@@ -306,31 +319,44 @@ export function useTasks() {
 
     const fila = tarefas
       .filter((t) => t.tipo === itemAtual.tipo && !t.concluido)
-      .sort((a, b) => a.ordemFila - b.ordemFila);
+      .sort((a, b) => (Number(a.ordemFila) || 0) - (Number(b.ordemFila) || 0));
 
     const index = fila.findIndex((t) => t.id === id);
     if (index === -1 || index >= fila.length - 1) return;
 
-    const itemAbaixo = fila[index + 1];
+    const novaFila = [...fila];
+    const itemAbaixo = novaFila[index + 1];
+    novaFila[index + 1] = itemAtual;
+    novaFila[index] = itemAbaixo;
 
-    const atual1 = { ...itemAtual, ordemFila: itemAbaixo.ordemFila };
-    const atual2 = { ...itemAbaixo, ordemFila: itemAtual.ordemFila };
+    const itensModificados = [];
+    const mapaNovasOrdens = new Map();
+
+    novaFila.forEach((t, i) => {
+      const novaOrdem = i + 1;
+      mapaNovasOrdens.set(t.id, novaOrdem);
+      if (t.ordemFila !== novaOrdem) {
+        itensModificados.push({ ...t, ordemFila: novaOrdem });
+      }
+    });
 
     setTarefas((prev) =>
-      prev.map((t) => {
-        if (t.id === itemAtual.id) return atual1;
-        if (t.id === itemAbaixo.id) return atual2;
-        return t;
-      })
+      prev.map((t) =>
+        mapaNovasOrdens.has(t.id)
+          ? { ...t, ordemFila: mapaNovasOrdens.get(t.id) }
+          : t
+      )
     );
 
-    (async () => {
-      try {
-        await supabase.from('tarefas').upsert([atual1, atual2]);
-      } catch (e) {
-        console.error('Falha ao reordenar tarefa no Supabase:', e);
-      }
-    })();
+    if (itensModificados.length > 0) {
+      (async () => {
+        try {
+          await supabase.from('tarefas').upsert(itensModificados);
+        } catch (e) {
+          console.error('Falha ao reordenar tarefa no Supabase:', e);
+        }
+      })();
+    }
   };
 
   const alternarPrioridade = (id) => {
@@ -359,6 +385,54 @@ export function useTasks() {
         console.error('Falha ao alterar prioridade no Supabase:', e);
       }
     })();
+  };
+
+  const organizarFilaPorPrioridade = (tipo) => {
+    const getPeso = (p) => {
+      const norm = (p || '').toLowerCase();
+      if (norm === 'p1') return 1;
+      if (norm === 'p2') return 2;
+      if (norm === 'p3') return 3;
+      return 2;
+    };
+
+    const fila = tarefas
+      .filter((t) => t.tipo === tipo && !t.concluido)
+      .sort((a, b) => {
+        const pesoA = getPeso(a.prioridade);
+        const pesoB = getPeso(b.prioridade);
+        if (pesoA !== pesoB) return pesoA - pesoB;
+        return (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR');
+      });
+
+    const itensModificados = [];
+    const mapaNovasOrdens = new Map();
+
+    fila.forEach((t, i) => {
+      const novaOrdem = i + 1;
+      mapaNovasOrdens.set(t.id, novaOrdem);
+      if (t.ordemFila !== novaOrdem) {
+        itensModificados.push({ ...t, ordemFila: novaOrdem });
+      }
+    });
+
+    setTarefas((prev) =>
+      prev.map((t) =>
+        mapaNovasOrdens.has(t.id)
+          ? { ...t, ordemFila: mapaNovasOrdens.get(t.id) }
+          : t
+      )
+    );
+
+    if (itensModificados.length > 0) {
+      (async () => {
+        try {
+          await supabase.from('tarefas').upsert(itensModificados);
+        } catch (e) {
+          console.error('Falha ao organizar fila por prioridade no Supabase:', e);
+        }
+      })();
+    }
   };
 
   const adicionarTarefa = ({
@@ -411,6 +485,7 @@ export function useTasks() {
     moverParaCima,
     moverParaBaixo,
     alternarPrioridade,
+    organizarFilaPorPrioridade,
     adicionarTarefa,
   };
 }
