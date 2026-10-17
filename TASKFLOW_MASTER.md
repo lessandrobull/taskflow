@@ -15,7 +15,7 @@ O **TaskFlow** é um Progressive Web App (PWA) de gerenciamento de tarefas minim
 - **Ambiente Operacional:** Windows.
 - **Terminal Padrão:** Git Bash integrado ao VSCode.
 - **Diretriz para IAs:** Todos os comandos de terminal sugeridos devem ser estritamente compatíveis com a sintaxe do Git Bash / Bash no ambiente Windows.
-
+- **Sempre proibido inferir, ao receber instruções pelas prompts precisa saber como está e como tem que ser antes de realizar qualquer alteração. 
 ---
 
 ## 3. Infraestrutura e Serviços Externos (Invisíveis no Código Local)

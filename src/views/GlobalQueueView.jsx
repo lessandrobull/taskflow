@@ -205,7 +205,7 @@ export default function GlobalQueueView({
   };
 
   return (
-    <div className="h-full flex flex-col pb-24 lg:pb-6 overflow-hidden">
+    <div className="h-full flex flex-col pb-2 lg:pb-6 overflow-hidden">
       {/* 1. SELETOR MOBILE (< lg) */}
       <div className="flex p-1 bg-zinc-100 rounded-lg border border-zinc-200 mb-3 shrink-0 lg:hidden">
         <button

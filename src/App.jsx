@@ -59,7 +59,7 @@ export default function App() {
 
       <main
         className={`flex-1 max-w-md lg:max-w-6xl xl:max-w-7xl w-full mx-auto px-4 pt-3 pb-16 flex flex-col min-h-0 ${
-          abaAtiva === 'hoje' || abaAtiva === 'notas' || abaAtiva === 'manual' ? 'overflow-hidden' : 'overflow-y-auto'
+          abaAtiva === 'hoje' || abaAtiva === 'fila' || abaAtiva === 'notas' || abaAtiva === 'manual' ? 'overflow-hidden' : 'overflow-y-auto'
         }`}
       >
         {abaAtiva === 'hoje' && (
