@@ -4,6 +4,12 @@ import DynamicIcon from '../components/DynamicIcon';
 import { TIPOS_TAREFA } from '../types';
 import { THEME } from '../colors';
 
+const PESO_PRIORIDADE = {
+  P1: 1,
+  P2: 2,
+  P3: 3,
+};
+
 export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) {
   const [agora, setAgora] = useState(new Date());
 
@@ -71,11 +77,25 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
       return inicio <= hojeISO;
     })
     .sort((a, b) => {
-      const limiteA = a.cadencia?.dataLimite && a.cadencia.dataLimite <= hojeISO;
-      const limiteB = b.cadencia?.dataLimite && b.cadencia.dataLimite <= hojeISO;
-      // Se atingiu o limite, sobe para o 1º lugar
-      if (limiteA && !limiteB) return -1;
-      if (!limiteA && limiteB) return 1;
+      const pendenteA = rotinaPendenteOuAtrasada(a);
+      const pendenteB = rotinaPendenteOuAtrasada(b);
+
+      // 1. Apenas atrasadas e pendentes assumem os primeiros lugares
+      if (pendenteA && !pendenteB) return -1;
+      if (!pendenteA && pendenteB) return 1;
+
+      // 2. Entre as pendentes, prioridade define a ordem (P1 > P2 > P3)
+      if (pendenteA && pendenteB) {
+        const pesoA = PESO_PRIORIDADE[a.prioridade] || 2;
+        const pesoB = PESO_PRIORIDADE[b.prioridade] || 2;
+        if (pesoA !== pesoB) {
+          return pesoA - pesoB;
+        }
+        // Desempate por ordem de chegada na fila
+        return (a.ordemFila || 0) - (b.ordemFila || 0);
+      }
+
+      // 3. As restantes (no prazo) permanecem como estavam
       return (a.ordemFila || 0) - (b.ordemFila || 0);
     });
 
