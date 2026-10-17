@@ -131,6 +131,8 @@ const NUMEROS_EXTENSO = {
   oito: 8,
   nove: 9,
   dez: 10,
+  quatorze: 14,
+  catorze: 14,
   quinze: 15,
   vinte: 20,
   trinta: 30,
@@ -285,6 +287,29 @@ export function processarInputRapido(textoBruto) {
     }
   }
 
+  // 3e. Reconhecimento de "todo [dia]" / "toda [dia]" / "todos os [dias]" / "todo dia"
+  const regexTodo = /\btod[oa]s?\s+(?:os\s+|as\s+)?(dias?|domingos?|segundas?(?:-feiras?)?|ter[çc]as?(?:-feiras?)?|quartas?(?:-feiras?)?|quintas?(?:-feiras?)?|sextas?(?:-feiras?)?|s[aá]bados?)\b/i;
+  const matchTodo = texto.match(regexTodo);
+  if (matchTodo) {
+    ehRotina = true;
+    const termoBruto = matchTodo[1].toLowerCase();
+    const termo = termoBruto.replace(/s(-feiras?)?$/, '$1').replace(/s$/, '');
+
+    if (termo === 'dia') {
+      intervaloDias = 1;
+      dataInicio = formatarDataISO(new Date());
+      dataLimite = dataInicio;
+    } else {
+      intervaloDias = 7;
+      const dataAlvo = resolverTermoData(termo);
+      if (dataAlvo) {
+        dataInicio = dataAlvo;
+        dataLimite = dataAlvo;
+      }
+    }
+    texto = texto.replace(matchTodo[0], '').trim();
+  }
+
   // 4. Reconhecimento de Frequência Explícita (1x semana, diariamente, etc.)
   const regexAdverbios = /\b(diariamente|semanalmente|quinzenalmente|mensalmente|anualmente)\b/i;
   const matchAdv = texto.match(regexAdverbios);
@@ -347,8 +372,9 @@ export function processarInputRapido(textoBruto) {
 
       proximaData = `${anoStr}-${m}-${d}`;
       texto = texto.replace(matchDataBr[0], '').trim();
-      if (horario) {
-        tipo = TIPOS_TAREFA.AGENDADO;
+      tipo = TIPOS_TAREFA.AGENDADO;
+      if (contexto === 'geral') {
+        contexto = 'agenda';
       }
     }
   }

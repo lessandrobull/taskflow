@@ -5,6 +5,7 @@ import TodayView from './views/TodayView';
 import GlobalQueueView from './views/GlobalQueueView';
 import ContextsView from './views/ContextsView';
 import NotesView from './views/NotesView';
+import ManualView from './views/ManualView';
 import BottomNav from './components/BottomNav';
 import QuickInput from './components/QuickInput';
 import { THEME } from './colors';
@@ -98,6 +99,9 @@ export default function App() {
             onAdicionarTarefa={adicionarTarefa}
             tarefas={tarefas}
           />
+        )}
+        {abaAtiva === 'manual' && (
+          <ManualView />
         )}
       </main>
 

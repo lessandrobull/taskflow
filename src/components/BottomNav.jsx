@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarBlank, ListNumbers, TreeStructure, NotePencil } from '@phosphor-icons/react';
+import { CalendarBlank, ListNumbers, TreeStructure, NotePencil, BookOpen } from '@phosphor-icons/react';
 import { THEME } from '../colors';
 
 export default function BottomNav({ abaAtiva, setAbaAtiva }) {
@@ -8,6 +8,7 @@ export default function BottomNav({ abaAtiva, setAbaAtiva }) {
     { id: 'fila', label: 'Filas', Icone: ListNumbers },
     { id: 'contextos', label: 'Tags', Icone: TreeStructure },
     { id: 'notas', label: 'Notas', Icone: NotePencil },
+    { id: 'manual', label: 'Manual', Icone: BookOpen },
   ];
 
   return (

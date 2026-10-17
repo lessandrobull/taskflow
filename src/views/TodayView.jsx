@@ -59,14 +59,27 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
     return false;
   };
 
-  // 1. Agenda: compromissos do dia com horário
+  // 1. Agenda: compromissos do dia (com horário ou com data marcada para hoje)
   const agendadosTarefas = tarefas
     .filter((t) => {
-      if (t.tipo !== TIPOS_TAREFA.AGENDADO) return false;
-      const minAlvo = converterParaMinutos(t.horario);
-      return minAlvo !== null && minAlvo >= minutosAtuais;
+      if (t.tipo !== TIPOS_TAREFA.AGENDADO || t.concluido) return false;
+      // Se tiver data específica, só exibe no dia correspondente (ou atrasados)
+      if (t.proximaData && t.proximaData > hojeISO) return false;
+
+      // Se tiver horário, esconde os que já passaram há muito tempo
+      if (t.horario) {
+        const minAlvo = converterParaMinutos(t.horario);
+        return minAlvo !== null && minAlvo >= minutosAtuais;
+      }
+      // Se não tem horário, mas é data marcada para hoje (ou anterior), exibe o dia todo
+      return true;
     })
-    .sort((a, b) => (a.horario || '').localeCompare(b.horario || ''));
+    .sort((a, b) => {
+      // Sem horário fica no topo do dia ou logo antes dos compromissos com hora
+      if (!a.horario && b.horario) return -1;
+      if (a.horario && !b.horario) return 1;
+      return (a.horario || '').localeCompare(b.horario || '');
+    });
 
   // 2. Rotina: ativadas a partir de dataInicio e ordenadas com dia limite no topo
   const rotinaTarefas = tarefas
@@ -132,8 +145,16 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
                   <span className={`text-sm font-semibold truncate ${THEME.agendados.texto}`}>{item.titulo}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs shrink-0">
-                  <span className={`font-mono font-bold ${THEME.agendados.horario}`}>{item.horario}</span>
-                  <span className={THEME.agendados.tempoRestante}>({calcularTempoRestante(item.horario)})</span>
+                  {item.horario ? (
+                    <>
+                      <span className={`font-mono font-bold ${THEME.agendados.horario}`}>{item.horario}</span>
+                      <span className={THEME.agendados.tempoRestante}>({calcularTempoRestante(item.horario)})</span>
+                    </>
+                  ) : (
+                    <span className={`font-mono font-semibold px-2 py-0.5 rounded text-[11px] ${THEME.agendados.cardBg} ${THEME.agendados.horario}`}>
+                      Dia todo
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
