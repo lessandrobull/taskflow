@@ -6,7 +6,7 @@ const NOTA_PADRAO = [
   {
     id: 'nota-padrao',
     titulo: 'Notas',
-    conteudo: 'Ideias soltas, comandos e rascunhos rápidos:\n\n- Comprar parafusos 6mm #casa/manutencao\n- Revisar endpoints de áudio do app\n- Checar status da entrega',
+    conteudo: 'Ideias soltas, comandos e rascunhos rápidos:\n\n- Comprar café #comprar\n- Revisar matéria de Química #estudos\n- Checar status da entrega',
     atualizadoEm: new Date().toISOString(),
   },
 ];

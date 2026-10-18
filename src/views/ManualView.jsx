@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  Sparkle, 
-  Clock, 
-  ArrowsClockwise, 
-  Target, 
-  FolderSimple, 
+import {
+  Sparkle,
+  Clock,
+  ArrowsClockwise,
+  Target,
+  FolderSimple,
   NotePencil,
   WarningCircle,
   CheckCircle,
@@ -14,9 +14,9 @@ import {
 import DynamicIcon from '../components/DynamicIcon';
 import { THEME } from '../colors';
 
-const ESTILO_KINDLE = {
+const ESTILO_LEITURA = {
   textAlign: 'justify',
-  textJustify: 'inter-word',
+  textWrap: 'pretty',
   hyphens: 'auto',
   WebkitHyphens: 'auto',
   textAlignLast: 'left',
@@ -146,9 +146,9 @@ export default function ManualView() {
         <h1 className="text-base font-bold tracking-tight text-zinc-900">
           Manual de Instruções
         </h1>
-        <p 
-          lang="pt-BR" 
-          style={ESTILO_KINDLE}
+        <p
+          lang="pt-BR"
+          style={ESTILO_LEITURA}
           className="text-xs text-zinc-600 mt-0.5 leading-relaxed"
         >
           O TaskFlow organiza seu dia a dia por meio de linguagem natural. Basta digitar o que você precisa fazer no campo superior e o sistema interpreta datas, horários e frequências de forma automática.
@@ -162,11 +162,10 @@ export default function ManualView() {
               <button
                 key={id}
                 onClick={() => setSecaoAtiva(id)}
-                className={`w-full sm:w-auto px-0.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-medium text-center transition-all border ${
-                  ativo
+                className={`w-full sm:w-auto px-0.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-medium text-center transition-all border ${ativo
                     ? corAtiva
                     : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900'
-                }`}
+                  }`}
               >
                 {label}
               </button>
@@ -191,8 +190,8 @@ export default function ManualView() {
               </div>
             </div>
 
-            <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
-              Você não precisa escolher pastas ou preencher formulários com vários campos para cada tarefa. O TaskFlow analisa o texto que você escreve e decide o destino exato da ação através de três perguntas diretas:
+            <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
+              Você não precisa escolher pastas ou preencher formulários com vários campos. O TaskFlow analisa o que você escreve e decide o destino exato da tarefa através de três perguntas diretas:
             </p>
 
             <div className="space-y-2.5 pt-1">
@@ -201,7 +200,7 @@ export default function ManualView() {
                   <span className="w-5 h-5 rounded-full bg-zinc-200 text-zinc-700 flex items-center justify-center text-[11px] font-mono">1</span>
                   <span>Tem horário marcado ou data específica no calendário?</span>
                 </div>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 pl-7 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed pt-0.5">
                   A tarefa é direcionada para a sua <strong>Agenda</strong>. Ela só tem relevância no dia e momento determinados para acontecer.
                 </p>
               </div>
@@ -211,7 +210,7 @@ export default function ManualView() {
                   <span className="w-5 h-5 rounded-full bg-zinc-200 text-zinc-700 flex items-center justify-center text-[11px] font-mono">2</span>
                   <span>Possui repetição, periodicidade ou período de execução?</span>
                 </div>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 pl-7 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed pt-0.5">
                   A tarefa é direcionada para o bloco de <strong>Rotina</strong>. São tarefas que formam seus hábitos e rituais contínuos (diários, semanais, quinzenais ou intercalados).
                 </p>
               </div>
@@ -221,7 +220,7 @@ export default function ManualView() {
                   <span className="w-5 h-5 rounded-full bg-zinc-200 text-zinc-700 flex items-center justify-center text-[11px] font-mono">3</span>
                   <span>É uma pendência avulsa, sem dia certo e sem repetição?</span>
                 </div>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 pl-7 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed pt-0.5">
                   A tarefa entra na sua fila de <strong>Foco</strong>. Ela aguarda na sequência prioritária para você executar uma coisa de cada vez, sem sobrecarga mental.
                 </p>
               </div>
@@ -242,32 +241,32 @@ export default function ManualView() {
               </div>
             </div>
 
-            <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
+            <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
               O bloco de Agenda reúne seus compromissos pontuais. Sempre que você insere um horário ou uma data do calendário, o TaskFlow separa essa atividade dos seus afazeres comuns para garantir que você não perca o prazo.
             </p>
 
             <div className="space-y-3 pt-1">
               <div className="space-y-1.5">
                 <h3 className="text-xs font-bold text-zinc-900">Compromissos com Horário Marcado</h3>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Utilize a preposição <strong>às</strong> ou o caractere <strong>@</strong> acompanhado da hora. O sistema calcula automaticamente o tempo restante para o evento e mantém a lista em estrita ordem cronológica:
                 </p>
-                <div className="p-2.5 rounded-xl border border-sky-200 bg-sky-50/70 font-mono text-xs text-sky-950 space-y-1">
+                <div className="p-2.5 rounded-xl border border-sky-200 bg-sky-50/70 text-xs font-medium text-sky-950 space-y-1.5">
                   <div>Dentista às 14:30</div>
-                  <div>Alinhamento com equipe @10h #pc</div>
+                  <div>Reunião de alinhamento @10h #pc</div>
                   <div>Buscar encomenda às 17h #rua</div>
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <h3 className="text-xs font-bold text-zinc-900">Compromissos com Data Específica (Dia Inteiro)</h3>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Se um evento precisa acontecer em um dia específico, mas não tem hora cravada, digite a data no formato <strong>DD/MM</strong> ou mencione a palavra <strong>dia</strong>. O item ficará guardado e aparecerá no topo da sua Agenda na data correspondente com a etiqueta <strong>Dia todo</strong>:
                 </p>
-                <div className="p-2.5 rounded-xl border border-sky-200 bg-sky-50/70 font-mono text-xs text-sky-950 space-y-1">
-                  <div>Entregar declaração do imposto de renda dia 15/10 #financas</div>
-                  <div>Pagar IPVA 20/01 #financas</div>
-                  <div>Aniversário de casamento 12/06 #pessoal</div>
+                <div className="p-2.5 rounded-xl border border-sky-200 bg-sky-50/70 text-xs font-medium text-sky-950 space-y-1.5">
+                  <div>Declaração IR dia 15/10 #financas</div>
+                  <div>Pagar IPVA dia 20/01 #financas</div>
+                  <div>Renovar CNH dia 12/06 #pessoal</div>
                 </div>
               </div>
             </div>
@@ -287,44 +286,44 @@ export default function ManualView() {
               </div>
             </div>
 
-            <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
+            <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
               Diferente de uma tarefa comum que você conclui e esquece, a rotina foi desenhada para a manutenção contínua da sua vida. Você pode agendar tarefas para dias fixos, intervalos espaçados ou janelas de oportunidade.
             </p>
 
             <div className="space-y-3 pt-1">
               <div className="space-y-1.5">
                 <h3 className="text-xs font-bold text-zinc-900">1. Dias Fixos da Semana ("Todo" ou "Toda")</h3>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Ideal para compromissos que ocorrem sempre no mesmo dia da semana ou diariamente:
                 </p>
-                <div className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 font-mono text-xs text-purple-950 space-y-1">
-                  <div>Limpar calhas todo sábado #casa/manutencao</div>
-                  <div>Revisão semanal toda sexta-feira #estudos</div>
+                <div className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 text-xs font-medium text-purple-950 space-y-1.5">
+                  <div>Limpar calhas todo sábado #casa</div>
+                  <div>Revisão toda sexta-feira #estudos</div>
                   <div>Regar as plantas todos os dias</div>
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <h3 className="text-xs font-bold text-zinc-900">2. Janelas de Execução (Início e Fim)</h3>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Para rituais que não precisam ser feitos em um dia exato, mas devem ser concluídos dentro de um determinado intervalo de tempo:
                 </p>
-                <div className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 font-mono text-xs text-purple-950 space-y-1">
-                  <div>Limpeza geral de segunda à sexta #casa/limpeza</div>
+                <div className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 text-xs font-medium text-purple-950 space-y-1.5">
+                  <div>Limpeza de segunda à sexta #casa</div>
                   <div>Tirar o lixo até terça #casa</div>
-                  <div>Pintura do portão começando sábado terminando domingo</div>
+                  <div>Pintura de sábado a domingo #casa</div>
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <h3 className="text-xs font-bold text-zinc-900">3. Intervalos e Semanas Intercaladas</h3>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Para atividades quinzenais ou rituais em que você quer trabalhar uma semana sim e outra não:
                 </p>
-                <div className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 font-mono text-xs text-purple-950 space-y-1">
-                  <div>Limpar academia de segunda à sexta a cada 14 dias #treino</div>
+                <div className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 text-xs font-medium text-purple-950 space-y-1.5">
+                  <div>Academia a cada 14 dias #treino</div>
                   <div>Conferir contas a cada 2 dias #financas</div>
-                  <div>Higienização profunda quinzenalmente #higiene</div>
+                  <div>Limpeza quinzenalmente #higiene</div>
                 </div>
               </div>
 
@@ -333,10 +332,10 @@ export default function ManualView() {
                   <WarningCircle size={16} />
                   <span>O que acontece se você não concluir a rotina no prazo?</span>
                 </div>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
-                  A tarefa <strong>nunca some da tela</strong> e não se multiplica em dezenas de tarefas acumuladas. Quando o prazo expira, ela ganha o selo de alerta <strong>Pendente</strong> e é fixada no <strong>topo absoluto do bloco</strong> até ser resolvida.
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
+                  A tarefa <strong>nunca some da tela</strong> e não se multiplica em dezenas de tarefas acumuladas. Quando o prazo expira, ela ganha o selo de alerta <strong>Pendente</strong> e é fixada no <strong>topo do bloco</strong> até ser resolvida.
                 </p>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
                   Havendo mais de uma rotina pendente, o TaskFlow as organiza por urgência: tarefas com prioridade <strong>P1</strong> assumem a frente, seguidas por <strong>P2</strong> e <strong>P3</strong>, mantendo as tarefas dentro do prazo na sequência normal logo abaixo.
                 </p>
               </div>
@@ -357,14 +356,14 @@ export default function ManualView() {
               </div>
             </div>
 
-            <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
+            <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
               A fila de Foco foi projetada para combater a paralisia causada por listas gigantescas. Se a tarefa é avulsa, sem data e sem repetição, ela aguarda a sua vez na fila.
             </p>
 
             <div className="space-y-3 pt-1">
               <div className="space-y-1.5">
                 <h3 className="text-xs font-bold text-zinc-900">Como funciona o painel de Foco</h3>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Em vez de bombardear você com dezenas de pendências, o TaskFlow apresenta exatamente <strong>1 tarefa em destaque principal</strong> e até <strong>2 tarefas no radar</strong> (que mostram o que vem logo em seguida).
                 </p>
               </div>
@@ -374,18 +373,22 @@ export default function ManualView() {
                   <CheckCircle size={16} />
                   <span>Ações Disponíveis na Tarefa Principal</span>
                 </div>
-                <ul className="text-xs text-zinc-700 space-y-1.5 pl-1">
-                  <li>• <strong>Concluir:</strong> Finaliza a tarefa imediatamente e traz a próxima da fila para a posição de destaque.</li>
-                  <li>• <strong>Pular para depois:</strong> Envia a tarefa atual para o fim da fila de foco, permitindo que a próxima tome a frente sem perder seu progresso.</li>
-                </ul>
+                <div className="space-y-1.5 text-xs text-zinc-700">
+                  <p lang="pt-BR" style={ESTILO_LEITURA} className="leading-relaxed">
+                    • <strong>Concluir:</strong> Finaliza a tarefa imediatamente e traz a próxima da fila para a posição de destaque.
+                  </p>
+                  <p lang="pt-BR" style={ESTILO_LEITURA} className="leading-relaxed">
+                    • <strong>Pular para depois:</strong> Envia a tarefa atual para o fim da fila de foco, permitindo que a próxima tome a frente sem perder seu progresso.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-1">
                 <h3 className="text-xs font-bold text-zinc-900">Exemplos de Tarefas de Foco</h3>
-                <div className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 font-mono text-xs text-emerald-950 space-y-1">
-                  <div>Comprar lâmpada para a garagem #casa/manutencao</div>
-                  <div>Escrever relatório de desempenho #pc</div>
-                  <div>Comprar pó de café e açúcar</div>
+                <div className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 text-xs font-medium text-emerald-950 space-y-1.5">
+                  <div>Comprar lâmpada #casa/manutencao</div>
+                  <div>Relatório de desempenho #pc</div>
+                  <div>Comprar café e açúcar</div>
                 </div>
               </div>
             </div>
@@ -405,7 +408,7 @@ export default function ManualView() {
               </div>
             </div>
 
-            <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
+            <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
               Ao digitar uma hashtag em qualquer lugar do texto, o TaskFlow organiza a tarefa na pasta temática correspondente e aplica o ícone automaticamente.
             </p>
 
@@ -444,7 +447,7 @@ export default function ManualView() {
               </div>
 
               <p className="text-[11px] text-zinc-500 pt-1">
-                * Em pastas compostas como <strong>#casa/limpeza</strong> ou <strong>#casa/manutencao</strong>, o sistema prioriza o ícone da subpasta mais específica (cascata bottom-up).
+                * Em pastas compostas como <strong>#casa/limpeza</strong> ou <strong>#casa/manutencao</strong>, o sistema prioriza o ícone da subpasta mais específica.
               </p>
             </div>
           </article>
@@ -463,26 +466,30 @@ export default function ManualView() {
               </div>
             </div>
 
-            <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
+            <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
               A aba de Notas funciona como seu bloco de anotações dinâmico. É o espaço perfeito para reuniões, listas de compras provisórias, rascunhos de planos ou pensamentos livres que ainda não foram estruturados.
             </p>
 
             <div className="space-y-3 pt-1">
               <div className="space-y-1.5">
                 <h3 className="text-xs font-bold text-zinc-900">Transformando Anotações em Tarefas Reais</h3>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Abaixo do editor da nota, cada linha escrita é tratada como um item independente. Ao lado de cada frase existe um botão de ação rápida:
                 </p>
-                <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/60 space-y-2 text-xs text-zinc-800">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-semibold text-[11px]">Criar Tarefa</span>
-                    <ArrowRight size={14} className="text-zinc-400" />
-                    <span>Envia a linha para o interpretador do TaskFlow, cadastrando-a no sistema imediatamente.</span>
+                <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/60 space-y-3 text-xs text-zinc-800">
+                  <div className="flex items-start gap-2">
+                    <span className="shrink-0 whitespace-nowrap px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-semibold text-[11px]">Criar Tarefa</span>
+                    <ArrowRight size={14} className="text-zinc-400 shrink-0 mt-0.5" />
+                    <p lang="pt-BR" style={ESTILO_LEITURA} className="leading-relaxed flex-1 min-w-0 text-zinc-700">
+                      Envia a linha para o interpretador do TaskFlow, cadastrando-a no sistema imediatamente.
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-[11px]">Adicionada</span>
-                    <ArrowRight size={14} className="text-zinc-400" />
-                    <span>O botão se transforma de forma permanente, informando visualmente que aquela pendência já foi despachada para suas listas.</span>
+                  <div className="flex items-start gap-2">
+                    <span className="shrink-0 whitespace-nowrap px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-[11px]">Adicionada</span>
+                    <ArrowRight size={14} className="text-zinc-400 shrink-0 mt-0.5" />
+                    <p lang="pt-BR" style={ESTILO_LEITURA} className="leading-relaxed flex-1 min-w-0 text-zinc-700">
+                      O botão se transforma de forma permanente, informando visualmente que aquela pendência já foi despachada para suas listas.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -492,7 +499,7 @@ export default function ManualView() {
                   <Lightbulb size={16} className="text-amber-600" />
                   <span>Dica de Produtividade</span>
                 </div>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Você pode escrever as linhas da sua nota já utilizando as regras normais do app (como <em>Trocar bateria às 15h #rua</em> ou <em>Revisar contrato todo sábado</em>). Ao tocar no botão de envio, o sistema respeitará os horários, tags e periodicidades normalmente.
                 </p>
               </div>
