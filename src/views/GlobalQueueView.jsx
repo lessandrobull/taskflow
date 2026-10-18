@@ -68,7 +68,7 @@ function ItemFila({
           )}
           {subAba === 'rotina' && item.cadencia?.intervaloDias && (
             <span className="text-[10px] text-purple-700 font-medium block">
-              A cada {item.cadencia.intervaloDias} dias
+              {item.cadencia.intervaloDias === 1 ? 'Diariamente' : `A cada ${item.cadencia.intervaloDias} dias`}
               {item.horario ? ` • @${item.horario}` : ''}
             </span>
           )}

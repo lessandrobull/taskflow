@@ -16,6 +16,7 @@ O **TaskFlow** é um Progressive Web App (PWA) de gerenciamento de tarefas minim
 - **Terminal Padrão:** Git Bash integrado ao VSCode.
 - **Diretriz para IAs:** Todos os comandos de terminal sugeridos devem ser estritamente compatíveis com a sintaxe do Git Bash / Bash no ambiente Windows.
 - **Sempre proibido inferir, ao receber instruções pelas prompts precisa saber como está e como tem que ser antes de realizar qualquer alteração. 
+
 ---
 
 ## 3. Infraestrutura e Serviços Externos (Invisíveis no Código Local)
@@ -61,6 +62,6 @@ echo "Concluído! Arquivo $OUTPUT pronto para leitura."
 
 ## 5. Protocolo de Autoatualização (Encerramento da Sessão)
 **Ação Obrigatória:** Antes de dar como finalizado qualquer atendimento que altere a arquitetura, estrutura ou escopo da plataforma, a IA deve:
-1. Avaliar se as alterações realizadas modificaram integrações externas (Supabase, Google Calendar, etc.), dependências estruturais ou fluxos de trabalho descritos neste documento.
+1. Avaliar se as alterações realizadas modificaram integrações externas (Supabase, Google Calendar, etc), dependências estruturais ou fluxos de trabalho descritos neste documento.
 2. Caso identifique divergências, fornecer explicitamente ao usuário a versão revisada e atualizada do `TASKFLOW_MASTER.md`.
 3. Instruir o usuário a gerar uma nova versão do `TASKFLOW_DUMPER.md` caso arquivos tenham sido criados, movidos ou excluídos.
