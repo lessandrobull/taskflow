@@ -143,30 +143,68 @@ export function useTasks() {
     let atualizacao = {};
 
     if (itemAtual.tipo === TIPOS_TAREFA.CADENCIA) {
-      const intervalo = itemAtual.cadencia?.intervaloDias || 7;
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+
+      let intervalo = itemAtual.cadencia?.intervaloDias;
+      if (!intervalo) {
+        const freq = itemAtual.cadencia?.frequencia;
+        if (freq === 'diaria') intervalo = 1;
+        else if (freq === 'semanal') intervalo = 7;
+        else if (freq === 'quinzenal') intervalo = 15;
+        else if (freq === 'mensal') intervalo = 30;
+        else intervalo = 7;
+      }
+
+      const dataIniStr = itemAtual.cadencia?.dataInicio || itemAtual.proximaData;
+      const dataLimStr = itemAtual.cadencia?.dataLimite;
+
       let novaDataInicio = null;
       let novaDataLimite = null;
-      let proxima = new Date();
+      let proxima = new Date(hoje);
 
-      if (itemAtual.cadencia?.dataInicio && itemAtual.cadencia?.dataLimite) {
-        const dtIni = new Date(`${itemAtual.cadencia.dataInicio}T00:00:00`);
-        const dtLim = new Date(`${itemAtual.cadencia.dataLimite}T00:00:00`);
-        dtIni.setDate(dtIni.getDate() + intervalo);
-        dtLim.setDate(dtLim.getDate() + intervalo);
+      if (dataIniStr && dataLimStr) {
+        const dtIni = new Date(`${dataIniStr}T00:00:00`);
+        const dtLim = new Date(`${dataLimStr}T00:00:00`);
+        const diffMs = dtLim.getTime() - dtIni.getTime();
+        const duracaoDias = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+
+        do {
+          dtIni.setDate(dtIni.getDate() + intervalo);
+        } while (dtIni <= hoje);
+
+        dtLim.setTime(dtIni.getTime() + duracaoDias * 24 * 60 * 60 * 1000);
+
         novaDataInicio = formatarDataISO(dtIni);
         novaDataLimite = formatarDataISO(dtLim);
         proxima = dtIni;
+      } else if (dataIniStr) {
+        const dtIni = new Date(`${dataIniStr}T00:00:00`);
+        do {
+          dtIni.setDate(dtIni.getDate() + intervalo);
+        } while (dtIni <= hoje);
+
+        novaDataInicio = formatarDataISO(dtIni);
+        novaDataLimite = null;
+        proxima = dtIni;
       } else {
         proxima.setDate(proxima.getDate() + intervalo);
+        novaDataInicio = formatarDataISO(proxima);
+        novaDataLimite = null;
       }
 
       const novaCadencia = itemAtual.cadencia
         ? {
             ...itemAtual.cadencia,
-            ...(novaDataInicio && { dataInicio: novaDataInicio }),
-            ...(novaDataLimite && { dataLimite: novaDataLimite }),
+            intervaloDias: intervalo,
+            dataInicio: novaDataInicio,
+            dataLimite: novaDataLimite,
           }
-        : null;
+        : {
+            intervaloDias: intervalo,
+            dataInicio: novaDataInicio,
+            dataLimite: novaDataLimite,
+          };
 
       atualizacao = {
         concluido: false,
