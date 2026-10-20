@@ -82,7 +82,6 @@ export function resolverIconePorContexto(contexto, tipo) {
     return 'ClipboardText';
   }
 
-  // Cascata bottom-up: testa da subpasta mais profunda até a raiz
   const niveis = contexto
     .toLowerCase()
     .split('/')
@@ -190,8 +189,20 @@ export function processarInputRapido(textoBruto) {
   let dataLimite = null;
   let ehRotina = false;
   let intervaloDias = 7;
+  let prioridade = PRIORIDADES.P2;
 
-  // 1. Extração de Horário (@14h, às 23h, as 23h, @14:30)
+  // 1. Extração de Prioridade (P1, P2, P3 / #p1, #p2, #p3)
+  const regexPrioridade = /(?:^|\s)#?(p[123])(?:\s|$)/i;
+  const matchPrioridade = texto.match(regexPrioridade);
+  if (matchPrioridade) {
+    const pDetectada = matchPrioridade[1].toLowerCase();
+    if (pDetectada === 'p1') prioridade = PRIORIDADES.P1;
+    else if (pDetectada === 'p2') prioridade = PRIORIDADES.P2;
+    else if (pDetectada === 'p3') prioridade = PRIORIDADES.P3;
+    texto = texto.replace(matchPrioridade[0], ' ').trim();
+  }
+
+  // 2. Extração de Horário (@14h, às 23h, as 23h, @14:30)
   const regexHorario = /(?:@|(?:\s|^)[a\u00e0\u00e1]s\s*)(\d{1,2}(?::\d{2}|h\d{2}|h)?)/i;
   const matchHorario = texto.match(regexHorario);
   if (matchHorario) {
@@ -203,7 +214,7 @@ export function processarInputRapido(textoBruto) {
     tipo = TIPOS_TAREFA.AGENDADO;
   }
 
-  // 2. Extração de Contexto Unicode (#agenda, #casa/jardim)
+  // 3. Extração de Contexto Unicode (#agenda, #casa/jardim)
   const regexContexto = /#([\p{L}\p{N}\s\-_/]+)(?:\s|$)/u;
   const matchContexto = texto.match(regexContexto);
   if (matchContexto) {
@@ -211,20 +222,16 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchContexto[0], '').trim();
   }
 
-  // 3. Reconhecimento de Janela de Rotina (Período com Início e Fim)
-  // 3a. "de [dia/data] até/à [dia/data]"
+  // 4. Reconhecimento de Janela de Rotina
   const regexDeAte = /\bde\s+(?:dia\s+)?([^\s]+)\s+(?:at[eé]|à|[aà])\s+(?:dia\s+)?([^\s]+)\b/i;
   const matchDeAte = texto.match(regexDeAte);
 
-  // 3b. "começando [dia/data] terminando [dia/data]"
   const regexComecando = /\bcome[çc]ando(?:\s+(?:no|na|em|dia))?\s+([^\s]+)\s+terminando(?:\s+(?:no|na|em|dia))?\s+([^\s]+)\b/i;
   const matchComecando = texto.match(regexComecando);
 
-  // 3c. "inicio [dia/data] limite [dia/data]"
   const regexInicioLimite = /\bin[ií]cio(?:\s+(?:no|na|em|dia))?\s+([^\s]+)\s+limite(?:\s+(?:no|na|em|dia))?\s+([^\s]+)\b/i;
   const matchInicioLimite = texto.match(regexInicioLimite);
 
-  // 3d. Apenas final: "até [dia/data]" ou "limite [dia/data]"
   const regexApenasAte = /\b(?:at[eé]|limite)(?:\s+dia)?\s+([^\s]+)\b/i;
 
   if (matchDeAte) {
@@ -287,7 +294,7 @@ export function processarInputRapido(textoBruto) {
     }
   }
 
-  // 3e. Reconhecimento de "todo [dia]" / "toda [dia]" / "todos os [dias]" / "todo dia"
+  // 5. Reconhecimento de "todo [dia]" / "toda [dia]"
   const regexTodo = /\btod[oa]s?\s+(?:os\s+|as\s+)?(dias?|domingos?|segundas?(?:-feiras?)?|ter[çc]as?(?:-feiras?)?|quartas?(?:-feiras?)?|quintas?(?:-feiras?)?|sextas?(?:-feiras?)?|s[aá]bados?)\b/i;
   const matchTodo = texto.match(regexTodo);
   if (matchTodo) {
@@ -310,7 +317,7 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchTodo[0], '').trim();
   }
 
-  // 4. Reconhecimento de Frequência Explícita (1x semana, diariamente, etc.)
+  // 6. Reconhecimento de Frequência Explícita
   const regexAdverbios = /\b(diariamente|semanalmente|quinzenalmente|mensalmente|anualmente)\b/i;
   const matchAdv = texto.match(regexAdverbios);
   if (matchAdv) {
@@ -358,7 +365,7 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchVezPor[0], '').trim();
   }
 
-  // 5. Data única sem janela ("dia 15/10", "15/10")
+  // 7. Data única sem repetição
   if (!ehRotina) {
     const regexDataBr = /(?:^|\s)(?:dia\s+)?(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?(?=\s|$)/i;
     const matchDataBr = texto.match(regexDataBr);
@@ -379,7 +386,7 @@ export function processarInputRapido(textoBruto) {
     }
   }
 
-  // 6. Configuração Final de Rotina vs Agenda vs Foco
+  // 8. Classificação final
   if (ehRotina) {
     tipo = TIPOS_TAREFA.CADENCIA;
     if (!dataInicio) {
@@ -398,9 +405,7 @@ export function processarInputRapido(textoBruto) {
     }
   }
 
-  // 7. Seleção de Ícone baseada estritamente em pastas (cascata bottom-up)
   const icone = resolverIconePorContexto(contexto, tipo);
-
   const tituloLimpo = texto.replace(/\s{2,}/g, ' ').replace(/^[-–—,]\s*/, '').trim();
 
   return {
@@ -411,6 +416,6 @@ export function processarInputRapido(textoBruto) {
     horario,
     cadencia,
     proximaData,
-    prioridade: PRIORIDADES.P2,
+    prioridade,
   };
 }

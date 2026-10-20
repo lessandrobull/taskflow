@@ -4,6 +4,13 @@ import DynamicIcon from '../components/DynamicIcon';
 import { TIPOS_TAREFA, PRIORIDADES } from '../types';
 import { THEME } from '../colors';
 
+function formatarDataISO(data) {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const dia = String(data.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
 function ItemFila({
   item,
   index,
@@ -16,7 +23,6 @@ function ItemFila({
   getBadgePrioridade,
 }) {
   const isPrincipal = index === 0;
-  const isRadar = subAba === 'foco' && (index === 1 || index === 2);
 
   const estiloCard =
     subAba === 'foco'
@@ -24,8 +30,8 @@ function ItemFila({
         ? 'bg-emerald-50/70 border-emerald-300 shadow-sm'
         : 'bg-white border-zinc-200 hover:border-emerald-200 shadow-sm'
       : isPrincipal
-      ? 'bg-purple-50/70 border-purple-300 shadow-sm'
-      : 'bg-white border-zinc-200 hover:border-purple-200 shadow-sm';
+        ? 'bg-purple-50/70 border-purple-300 shadow-sm'
+        : 'bg-white border-zinc-200 hover:border-purple-200 shadow-sm';
 
   const corIcone =
     subAba === 'foco'
@@ -33,8 +39,8 @@ function ItemFila({
         ? 'text-emerald-700'
         : 'text-zinc-600'
       : isPrincipal
-      ? 'text-purple-700'
-      : 'text-zinc-600';
+        ? 'text-purple-700'
+        : 'text-zinc-600';
 
   return (
     <div className={`flex items-center justify-between pl-2 pr-2 py-2.5 rounded-xl border transition-all ${estiloCard}`}>
@@ -55,17 +61,11 @@ function ItemFila({
 
         <div className="flex-1 min-w-0">
           <p
-            className={`text-xs truncate ${
-              isPrincipal ? 'font-bold text-zinc-900' : 'font-medium text-zinc-800'
-            }`}
+            className={`text-xs truncate ${isPrincipal ? 'font-bold text-zinc-900' : 'font-medium text-zinc-800'
+              }`}
           >
             {item.titulo}
           </p>
-          {isRadar && (
-            <span className="text-[10px] text-emerald-700 font-medium block">
-              Radar Hoje ({index + 1}º)
-            </span>
-          )}
           {subAba === 'rotina' && item.cadencia?.intervaloDias && (
             <span className="text-[10px] text-purple-700 font-medium block">
               {item.cadencia.intervaloDias === 1 ? 'Diariamente' : `A cada ${item.cadencia.intervaloDias} dias`}
@@ -108,11 +108,10 @@ function ItemFila({
 
         <button
           onClick={() => toggleConcluir(item.id)}
-          className={`p-1 rounded-lg border border-transparent transition-colors ${
-            subAba === 'foco'
+          className={`p-1 rounded-lg border border-transparent transition-colors ${subAba === 'foco'
               ? 'text-zinc-400 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-200'
               : 'text-zinc-400 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-200'
-          }`}
+            }`}
           title="Concluir tarefa"
         >
           <Check size={14} weight="bold" />
@@ -179,14 +178,21 @@ export default function GlobalQueueView({
   removerTarefa,
   limparConcluidos,
 }) {
-  const [subAba, setSubAba] = useState('foco'); // 'foco' | 'rotina' | 'concluido'
+  const [subAba, setSubAba] = useState('foco');
+  const hojeISO = formatarDataISO(new Date());
 
   const filaFoco = tarefas
     .filter((t) => t.tipo === TIPOS_TAREFA.FOCO && !t.concluido)
     .sort((a, b) => (a.ordemFila || 0) - (b.ordemFila || 0));
 
+  // Opção B: rotina do ciclo atual (oculta as que já foram empurradas para o futuro)
   const filaRotina = tarefas
-    .filter((t) => t.tipo === TIPOS_TAREFA.CADENCIA && !t.concluido)
+    .filter((t) => {
+      if (t.tipo !== TIPOS_TAREFA.CADENCIA || t.concluido) return false;
+      const inicio = t.cadencia?.dataInicio || t.proximaData;
+      if (inicio && inicio > hojeISO) return false;
+      return true;
+    })
     .sort((a, b) => (a.ordemFila || 0) - (b.ordemFila || 0));
 
   const filaConcluido = tarefas
@@ -210,31 +216,28 @@ export default function GlobalQueueView({
       <div className="flex p-1 bg-zinc-100 rounded-lg border border-zinc-200 mb-3 shrink-0 lg:hidden">
         <button
           onClick={() => setSubAba('foco')}
-          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${
-            subAba === 'foco'
+          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${subAba === 'foco'
               ? 'bg-white text-emerald-800 shadow-sm border border-emerald-200/80 font-bold'
               : 'text-zinc-500 hover:text-zinc-800'
-          }`}
+            }`}
         >
           Foco
         </button>
         <button
           onClick={() => setSubAba('rotina')}
-          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${
-            subAba === 'rotina'
+          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${subAba === 'rotina'
               ? 'bg-white text-purple-800 shadow-sm border border-purple-200/80 font-bold'
               : 'text-zinc-500 hover:text-zinc-800'
-          }`}
+            }`}
         >
           Rotina
         </button>
         <button
           onClick={() => setSubAba('concluido')}
-          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${
-            subAba === 'concluido'
+          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${subAba === 'concluido'
               ? 'bg-white text-zinc-900 shadow-sm border border-zinc-300 font-bold'
               : 'text-zinc-500 hover:text-zinc-800'
-          }`}
+            }`}
         >
           Concluído
         </button>
@@ -245,13 +248,12 @@ export default function GlobalQueueView({
         <div className="flex items-center justify-between pb-1 mb-2 border-b border-zinc-200 shrink-0">
           <div>
             <h2
-              className={`text-xs uppercase tracking-wider font-bold ${
-                subAba === 'foco'
+              className={`text-xs uppercase tracking-wider font-bold ${subAba === 'foco'
                   ? THEME.foco.titulo
                   : subAba === 'rotina'
-                  ? THEME.rotina.titulo
-                  : 'text-zinc-600'
-              }`}
+                    ? THEME.rotina.titulo
+                    : 'text-zinc-600'
+                }`}
             >
               {subAba === 'foco' && 'Fila de Foco'}
               {subAba === 'rotina' && 'Fila de Rotina'}
@@ -357,9 +359,8 @@ export default function GlobalQueueView({
         </div>
       </div>
 
-      {/* 3. VISUALIZAÇÃO DESKTOP: 3 Colunas (Foco | Rotina | Concluído) */}
+      {/* 3. VISUALIZAÇÃO DESKTOP: 3 Colunas */}
       <div className="hidden lg:grid lg:grid-cols-3 lg:gap-6 lg:h-full lg:min-h-0">
-        {/* Coluna 1: Fila de Foco */}
         <div className="flex flex-col h-full min-h-0 border-r border-zinc-200 pr-4">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-200 shrink-0">
             <div>
@@ -367,7 +368,7 @@ export default function GlobalQueueView({
                 Fila de Foco
               </h2>
               <p className="text-[11px] text-zinc-500">
-                Os 3 primeiros alimentam a tela Hoje
+                Tarefas pendentes da esteira
               </p>
             </div>
             <div className="flex items-center gap-1.5">
@@ -407,7 +408,6 @@ export default function GlobalQueueView({
           </div>
         </div>
 
-        {/* Coluna 2: Fila de Rotina */}
         <div className="flex flex-col h-full min-h-0 border-r border-zinc-200 pr-4">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-200 shrink-0">
             <div>
@@ -435,7 +435,7 @@ export default function GlobalQueueView({
 
           <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-1">
             {filaRotina.length === 0 ? (
-              <div className="text-center py-16 text-zinc-400 text-xs">Nenhuma rotina cadastrada.</div>
+              <div className="text-center py-16 text-zinc-400 text-xs">Nenhuma rotina pendente.</div>
             ) : (
               filaRotina.map((item, index) => (
                 <ItemFila
@@ -455,7 +455,6 @@ export default function GlobalQueueView({
           </div>
         </div>
 
-        {/* Coluna 3: Concluído (com Limpeza Geral e Exclusão Individual) */}
         <div className="flex flex-col h-full min-h-0">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-200 shrink-0">
             <div>

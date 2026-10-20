@@ -56,6 +56,11 @@ dist
 dist-ssr
 *.local
 
+# Variáveis de ambiente e segredos
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -387,6 +392,7 @@ export default function App() {
     moverParaCima,
     moverParaBaixo,
     alternarPrioridade,
+    organizarFilaPorPrioridade,
     adicionarTarefa,
   } = useTasks();
 
@@ -417,7 +423,7 @@ export default function App() {
 
       <main
         className={`flex-1 max-w-md lg:max-w-6xl xl:max-w-7xl w-full mx-auto px-4 pt-3 pb-16 flex flex-col min-h-0 ${
-          abaAtiva === 'hoje' || abaAtiva === 'notas' || abaAtiva === 'manual' ? 'overflow-hidden' : 'overflow-y-auto'
+          abaAtiva === 'hoje' || abaAtiva === 'fila' || abaAtiva === 'notas' || abaAtiva === 'manual' ? 'overflow-hidden' : 'overflow-y-auto'
         }`}
       >
         {abaAtiva === 'hoje' && (
@@ -434,6 +440,7 @@ export default function App() {
             moverParaCima={moverParaCima}
             moverParaBaixo={moverParaBaixo}
             alternarPrioridade={alternarPrioridade}
+            organizarFilaPorPrioridade={organizarFilaPorPrioridade}
             removerTarefa={removerTarefa}
             limparConcluidos={limparConcluidos}
           />
@@ -809,11 +816,10 @@ export async function buscarEventosHoje() {
 ### 📄 ARQUIVO: ./src/services/supabase.js
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://xttzilpuuqjbztjkeadd.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dHppbHB1dXFqYnp0amtlYWRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3NDM1NDAsImV4cCI6MjEwNDMxOTU0MH0.JChW7np_UAGozYm_jaBS44dBKA9y3gX0Lj2SVdosxUY';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
 
 ### 📄 ARQUIVO: ./src/types.js
 export const PRIORIDADES = {
@@ -945,7 +951,7 @@ const NOTA_PADRAO = [
   {
     id: 'nota-padrao',
     titulo: 'Notas',
-    conteudo: 'Ideias soltas, comandos e rascunhos rápidos:\n\n- Comprar parafusos 6mm #casa/manutencao\n- Revisar endpoints de áudio do app\n- Checar status da entrega',
+    conteudo: 'Ideias soltas, comandos e rascunhos rápidos:\n\n- Comprar café #comprar\n- Revisar matéria de Química #estudos\n- Checar status da entrega',
     atualizadoEm: new Date().toISOString(),
   },
 ];
@@ -1166,30 +1172,68 @@ export function useTasks() {
     let atualizacao = {};
 
     if (itemAtual.tipo === TIPOS_TAREFA.CADENCIA) {
-      const intervalo = itemAtual.cadencia?.intervaloDias || 7;
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+
+      let intervalo = itemAtual.cadencia?.intervaloDias;
+      if (!intervalo) {
+        const freq = itemAtual.cadencia?.frequencia;
+        if (freq === 'diaria') intervalo = 1;
+        else if (freq === 'semanal') intervalo = 7;
+        else if (freq === 'quinzenal') intervalo = 15;
+        else if (freq === 'mensal') intervalo = 30;
+        else intervalo = 7;
+      }
+
+      const dataIniStr = itemAtual.cadencia?.dataInicio || itemAtual.proximaData;
+      const dataLimStr = itemAtual.cadencia?.dataLimite;
+
       let novaDataInicio = null;
       let novaDataLimite = null;
-      let proxima = new Date();
+      let proxima = new Date(hoje);
 
-      if (itemAtual.cadencia?.dataInicio && itemAtual.cadencia?.dataLimite) {
-        const dtIni = new Date(`${itemAtual.cadencia.dataInicio}T00:00:00`);
-        const dtLim = new Date(`${itemAtual.cadencia.dataLimite}T00:00:00`);
-        dtIni.setDate(dtIni.getDate() + intervalo);
-        dtLim.setDate(dtLim.getDate() + intervalo);
+      if (dataIniStr && dataLimStr) {
+        const dtIni = new Date(`${dataIniStr}T00:00:00`);
+        const dtLim = new Date(`${dataLimStr}T00:00:00`);
+        const diffMs = dtLim.getTime() - dtIni.getTime();
+        const duracaoDias = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+
+        do {
+          dtIni.setDate(dtIni.getDate() + intervalo);
+        } while (dtIni <= hoje);
+
+        dtLim.setTime(dtIni.getTime() + duracaoDias * 24 * 60 * 60 * 1000);
+
         novaDataInicio = formatarDataISO(dtIni);
         novaDataLimite = formatarDataISO(dtLim);
         proxima = dtIni;
+      } else if (dataIniStr) {
+        const dtIni = new Date(`${dataIniStr}T00:00:00`);
+        do {
+          dtIni.setDate(dtIni.getDate() + intervalo);
+        } while (dtIni <= hoje);
+
+        novaDataInicio = formatarDataISO(dtIni);
+        novaDataLimite = null;
+        proxima = dtIni;
       } else {
         proxima.setDate(proxima.getDate() + intervalo);
+        novaDataInicio = formatarDataISO(proxima);
+        novaDataLimite = null;
       }
 
       const novaCadencia = itemAtual.cadencia
         ? {
             ...itemAtual.cadencia,
-            ...(novaDataInicio && { dataInicio: novaDataInicio }),
-            ...(novaDataLimite && { dataLimite: novaDataLimite }),
+            intervaloDias: intervalo,
+            dataInicio: novaDataInicio,
+            dataLimite: novaDataLimite,
           }
-        : null;
+        : {
+            intervaloDias: intervalo,
+            dataInicio: novaDataInicio,
+            dataLimite: novaDataLimite,
+          };
 
       atualizacao = {
         concluido: false,
@@ -1296,31 +1340,44 @@ export function useTasks() {
 
     const fila = tarefas
       .filter((t) => t.tipo === itemAtual.tipo && !t.concluido)
-      .sort((a, b) => a.ordemFila - b.ordemFila);
+      .sort((a, b) => (Number(a.ordemFila) || 0) - (Number(b.ordemFila) || 0));
 
     const index = fila.findIndex((t) => t.id === id);
     if (index <= 0) return;
 
-    const itemAcima = fila[index - 1];
+    const novaFila = [...fila];
+    const itemAcima = novaFila[index - 1];
+    novaFila[index - 1] = itemAtual;
+    novaFila[index] = itemAcima;
 
-    const atual1 = { ...itemAtual, ordemFila: itemAcima.ordemFila };
-    const atual2 = { ...itemAcima, ordemFila: itemAtual.ordemFila };
+    const itensModificados = [];
+    const mapaNovasOrdens = new Map();
+
+    novaFila.forEach((t, i) => {
+      const novaOrdem = i + 1;
+      mapaNovasOrdens.set(t.id, novaOrdem);
+      if (t.ordemFila !== novaOrdem) {
+        itensModificados.push({ ...t, ordemFila: novaOrdem });
+      }
+    });
 
     setTarefas((prev) =>
-      prev.map((t) => {
-        if (t.id === itemAtual.id) return atual1;
-        if (t.id === itemAcima.id) return atual2;
-        return t;
-      })
+      prev.map((t) =>
+        mapaNovasOrdens.has(t.id)
+          ? { ...t, ordemFila: mapaNovasOrdens.get(t.id) }
+          : t
+      )
     );
 
-    (async () => {
-      try {
-        await supabase.from('tarefas').upsert([atual1, atual2]);
-      } catch (e) {
-        console.error('Falha ao reordenar tarefa no Supabase:', e);
-      }
-    })();
+    if (itensModificados.length > 0) {
+      (async () => {
+        try {
+          await supabase.from('tarefas').upsert(itensModificados);
+        } catch (e) {
+          console.error('Falha ao reordenar tarefa no Supabase:', e);
+        }
+      })();
+    }
   };
 
   const moverParaBaixo = (id) => {
@@ -1329,31 +1386,44 @@ export function useTasks() {
 
     const fila = tarefas
       .filter((t) => t.tipo === itemAtual.tipo && !t.concluido)
-      .sort((a, b) => a.ordemFila - b.ordemFila);
+      .sort((a, b) => (Number(a.ordemFila) || 0) - (Number(b.ordemFila) || 0));
 
     const index = fila.findIndex((t) => t.id === id);
     if (index === -1 || index >= fila.length - 1) return;
 
-    const itemAbaixo = fila[index + 1];
+    const novaFila = [...fila];
+    const itemAbaixo = novaFila[index + 1];
+    novaFila[index + 1] = itemAtual;
+    novaFila[index] = itemAbaixo;
 
-    const atual1 = { ...itemAtual, ordemFila: itemAbaixo.ordemFila };
-    const atual2 = { ...itemAbaixo, ordemFila: itemAtual.ordemFila };
+    const itensModificados = [];
+    const mapaNovasOrdens = new Map();
+
+    novaFila.forEach((t, i) => {
+      const novaOrdem = i + 1;
+      mapaNovasOrdens.set(t.id, novaOrdem);
+      if (t.ordemFila !== novaOrdem) {
+        itensModificados.push({ ...t, ordemFila: novaOrdem });
+      }
+    });
 
     setTarefas((prev) =>
-      prev.map((t) => {
-        if (t.id === itemAtual.id) return atual1;
-        if (t.id === itemAbaixo.id) return atual2;
-        return t;
-      })
+      prev.map((t) =>
+        mapaNovasOrdens.has(t.id)
+          ? { ...t, ordemFila: mapaNovasOrdens.get(t.id) }
+          : t
+      )
     );
 
-    (async () => {
-      try {
-        await supabase.from('tarefas').upsert([atual1, atual2]);
-      } catch (e) {
-        console.error('Falha ao reordenar tarefa no Supabase:', e);
-      }
-    })();
+    if (itensModificados.length > 0) {
+      (async () => {
+        try {
+          await supabase.from('tarefas').upsert(itensModificados);
+        } catch (e) {
+          console.error('Falha ao reordenar tarefa no Supabase:', e);
+        }
+      })();
+    }
   };
 
   const alternarPrioridade = (id) => {
@@ -1382,6 +1452,54 @@ export function useTasks() {
         console.error('Falha ao alterar prioridade no Supabase:', e);
       }
     })();
+  };
+
+  const organizarFilaPorPrioridade = (tipo) => {
+    const getPeso = (p) => {
+      const norm = (p || '').toLowerCase();
+      if (norm === 'p1') return 1;
+      if (norm === 'p2') return 2;
+      if (norm === 'p3') return 3;
+      return 2;
+    };
+
+    const fila = tarefas
+      .filter((t) => t.tipo === tipo && !t.concluido)
+      .sort((a, b) => {
+        const pesoA = getPeso(a.prioridade);
+        const pesoB = getPeso(b.prioridade);
+        if (pesoA !== pesoB) return pesoA - pesoB;
+        return (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR');
+      });
+
+    const itensModificados = [];
+    const mapaNovasOrdens = new Map();
+
+    fila.forEach((t, i) => {
+      const novaOrdem = i + 1;
+      mapaNovasOrdens.set(t.id, novaOrdem);
+      if (t.ordemFila !== novaOrdem) {
+        itensModificados.push({ ...t, ordemFila: novaOrdem });
+      }
+    });
+
+    setTarefas((prev) =>
+      prev.map((t) =>
+        mapaNovasOrdens.has(t.id)
+          ? { ...t, ordemFila: mapaNovasOrdens.get(t.id) }
+          : t
+      )
+    );
+
+    if (itensModificados.length > 0) {
+      (async () => {
+        try {
+          await supabase.from('tarefas').upsert(itensModificados);
+        } catch (e) {
+          console.error('Falha ao organizar fila por prioridade no Supabase:', e);
+        }
+      })();
+    }
   };
 
   const adicionarTarefa = ({
@@ -1434,6 +1552,7 @@ export function useTasks() {
     moverParaCima,
     moverParaBaixo,
     alternarPrioridade,
+    organizarFilaPorPrioridade,
     adicionarTarefa,
   };
 }
@@ -1524,7 +1643,6 @@ export function resolverIconePorContexto(contexto, tipo) {
     return 'ClipboardText';
   }
 
-  // Cascata bottom-up: testa da subpasta mais profunda até a raiz
   const niveis = contexto
     .toLowerCase()
     .split('/')
@@ -1632,8 +1750,20 @@ export function processarInputRapido(textoBruto) {
   let dataLimite = null;
   let ehRotina = false;
   let intervaloDias = 7;
+  let prioridade = PRIORIDADES.P2;
 
-  // 1. Extração de Horário (@14h, às 23h, as 23h, @14:30)
+  // 1. Extração de Prioridade (P1, P2, P3 / #p1, #p2, #p3)
+  const regexPrioridade = /(?:^|\s)#?(p[123])(?:\s|$)/i;
+  const matchPrioridade = texto.match(regexPrioridade);
+  if (matchPrioridade) {
+    const pDetectada = matchPrioridade[1].toLowerCase();
+    if (pDetectada === 'p1') prioridade = PRIORIDADES.P1;
+    else if (pDetectada === 'p2') prioridade = PRIORIDADES.P2;
+    else if (pDetectada === 'p3') prioridade = PRIORIDADES.P3;
+    texto = texto.replace(matchPrioridade[0], ' ').trim();
+  }
+
+  // 2. Extração de Horário (@14h, às 23h, as 23h, @14:30)
   const regexHorario = /(?:@|(?:\s|^)[a\u00e0\u00e1]s\s*)(\d{1,2}(?::\d{2}|h\d{2}|h)?)/i;
   const matchHorario = texto.match(regexHorario);
   if (matchHorario) {
@@ -1645,7 +1775,7 @@ export function processarInputRapido(textoBruto) {
     tipo = TIPOS_TAREFA.AGENDADO;
   }
 
-  // 2. Extração de Contexto Unicode (#agenda, #casa/jardim)
+  // 3. Extração de Contexto Unicode (#agenda, #casa/jardim)
   const regexContexto = /#([\p{L}\p{N}\s\-_/]+)(?:\s|$)/u;
   const matchContexto = texto.match(regexContexto);
   if (matchContexto) {
@@ -1653,20 +1783,16 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchContexto[0], '').trim();
   }
 
-  // 3. Reconhecimento de Janela de Rotina (Período com Início e Fim)
-  // 3a. "de [dia/data] até/à [dia/data]"
+  // 4. Reconhecimento de Janela de Rotina
   const regexDeAte = /\bde\s+(?:dia\s+)?([^\s]+)\s+(?:at[eé]|à|[aà])\s+(?:dia\s+)?([^\s]+)\b/i;
   const matchDeAte = texto.match(regexDeAte);
 
-  // 3b. "começando [dia/data] terminando [dia/data]"
   const regexComecando = /\bcome[çc]ando(?:\s+(?:no|na|em|dia))?\s+([^\s]+)\s+terminando(?:\s+(?:no|na|em|dia))?\s+([^\s]+)\b/i;
   const matchComecando = texto.match(regexComecando);
 
-  // 3c. "inicio [dia/data] limite [dia/data]"
   const regexInicioLimite = /\bin[ií]cio(?:\s+(?:no|na|em|dia))?\s+([^\s]+)\s+limite(?:\s+(?:no|na|em|dia))?\s+([^\s]+)\b/i;
   const matchInicioLimite = texto.match(regexInicioLimite);
 
-  // 3d. Apenas final: "até [dia/data]" ou "limite [dia/data]"
   const regexApenasAte = /\b(?:at[eé]|limite)(?:\s+dia)?\s+([^\s]+)\b/i;
 
   if (matchDeAte) {
@@ -1729,7 +1855,7 @@ export function processarInputRapido(textoBruto) {
     }
   }
 
-  // 3e. Reconhecimento de "todo [dia]" / "toda [dia]" / "todos os [dias]" / "todo dia"
+  // 5. Reconhecimento de "todo [dia]" / "toda [dia]"
   const regexTodo = /\btod[oa]s?\s+(?:os\s+|as\s+)?(dias?|domingos?|segundas?(?:-feiras?)?|ter[çc]as?(?:-feiras?)?|quartas?(?:-feiras?)?|quintas?(?:-feiras?)?|sextas?(?:-feiras?)?|s[aá]bados?)\b/i;
   const matchTodo = texto.match(regexTodo);
   if (matchTodo) {
@@ -1752,7 +1878,7 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchTodo[0], '').trim();
   }
 
-  // 4. Reconhecimento de Frequência Explícita (1x semana, diariamente, etc.)
+  // 6. Reconhecimento de Frequência Explícita
   const regexAdverbios = /\b(diariamente|semanalmente|quinzenalmente|mensalmente|anualmente)\b/i;
   const matchAdv = texto.match(regexAdverbios);
   if (matchAdv) {
@@ -1800,7 +1926,7 @@ export function processarInputRapido(textoBruto) {
     texto = texto.replace(matchVezPor[0], '').trim();
   }
 
-  // 5. Data única sem janela ("dia 15/10", "15/10")
+  // 7. Data única sem repetição
   if (!ehRotina) {
     const regexDataBr = /(?:^|\s)(?:dia\s+)?(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?(?=\s|$)/i;
     const matchDataBr = texto.match(regexDataBr);
@@ -1821,7 +1947,7 @@ export function processarInputRapido(textoBruto) {
     }
   }
 
-  // 6. Configuração Final de Rotina vs Agenda vs Foco
+  // 8. Classificação final
   if (ehRotina) {
     tipo = TIPOS_TAREFA.CADENCIA;
     if (!dataInicio) {
@@ -1840,9 +1966,7 @@ export function processarInputRapido(textoBruto) {
     }
   }
 
-  // 7. Seleção de Ícone baseada estritamente em pastas (cascata bottom-up)
   const icone = resolverIconePorContexto(contexto, tipo);
-
   const tituloLimpo = texto.replace(/\s{2,}/g, ' ').replace(/^[-–—,]\s*/, '').trim();
 
   return {
@@ -1853,10 +1977,9 @@ export function processarInputRapido(textoBruto) {
     horario,
     cadencia,
     proximaData,
-    prioridade: PRIORIDADES.P2,
+    prioridade,
   };
 }
-
 
 ### 📄 ARQUIVO: ./src/utils/tree.js
 /**
@@ -2659,10 +2782,17 @@ export default function ContextsView({
 
 ### 📄 ARQUIVO: ./src/views/GlobalQueueView.jsx
 import React, { useState } from 'react';
-import { CaretUp, CaretDown, Check, Lightning, ArrowCounterClockwise, CheckCircle, Trash } from '@phosphor-icons/react';
+import { CaretUp, CaretDown, Check, Lightning, ArrowCounterClockwise, CheckCircle, Trash, SortAscending } from '@phosphor-icons/react';
 import DynamicIcon from '../components/DynamicIcon';
 import { TIPOS_TAREFA, PRIORIDADES } from '../types';
 import { THEME } from '../colors';
+
+function formatarDataISO(data) {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const dia = String(data.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
 
 function ItemFila({
   item,
@@ -2676,7 +2806,6 @@ function ItemFila({
   getBadgePrioridade,
 }) {
   const isPrincipal = index === 0;
-  const isRadar = subAba === 'foco' && (index === 1 || index === 2);
 
   const estiloCard =
     subAba === 'foco'
@@ -2684,8 +2813,8 @@ function ItemFila({
         ? 'bg-emerald-50/70 border-emerald-300 shadow-sm'
         : 'bg-white border-zinc-200 hover:border-emerald-200 shadow-sm'
       : isPrincipal
-      ? 'bg-purple-50/70 border-purple-300 shadow-sm'
-      : 'bg-white border-zinc-200 hover:border-purple-200 shadow-sm';
+        ? 'bg-purple-50/70 border-purple-300 shadow-sm'
+        : 'bg-white border-zinc-200 hover:border-purple-200 shadow-sm';
 
   const corIcone =
     subAba === 'foco'
@@ -2693,13 +2822,13 @@ function ItemFila({
         ? 'text-emerald-700'
         : 'text-zinc-600'
       : isPrincipal
-      ? 'text-purple-700'
-      : 'text-zinc-600';
+        ? 'text-purple-700'
+        : 'text-zinc-600';
 
   return (
-    <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${estiloCard}`}>
-      <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
-        <div className="flex items-center justify-center w-5 font-mono text-xs shrink-0">
+    <div className={`flex items-center justify-between pl-2 pr-2 py-2.5 rounded-xl border transition-all ${estiloCard}`}>
+      <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-1">
+        <div className="flex items-center justify-center w-4 font-mono text-xs shrink-0">
           {isPrincipal ? (
             <Lightning
               size={15}
@@ -2715,27 +2844,21 @@ function ItemFila({
 
         <div className="flex-1 min-w-0">
           <p
-            className={`text-xs truncate ${
-              isPrincipal ? 'font-bold text-zinc-900' : 'font-medium text-zinc-800'
-            }`}
+            className={`text-xs truncate ${isPrincipal ? 'font-bold text-zinc-900' : 'font-medium text-zinc-800'
+              }`}
           >
             {item.titulo}
           </p>
-          {isRadar && (
-            <span className="text-[10px] text-emerald-700 font-medium block">
-              Radar Hoje ({index + 1}º)
-            </span>
-          )}
           {subAba === 'rotina' && item.cadencia?.intervaloDias && (
             <span className="text-[10px] text-purple-700 font-medium block">
-              A cada {item.cadencia.intervaloDias} dias
+              {item.cadencia.intervaloDias === 1 ? 'Diariamente' : `A cada ${item.cadencia.intervaloDias} dias`}
               {item.horario ? ` • @${item.horario}` : ''}
             </span>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1 shrink-0">
         <button
           onClick={() => alternarPrioridade(item.id)}
           className={`px-1.5 py-0.5 rounded text-[10px] font-mono border uppercase tracking-wider transition-colors ${getBadgePrioridade(
@@ -2747,11 +2870,11 @@ function ItemFila({
           {item.prioridade.toUpperCase()}
         </button>
 
-        <div className="flex flex-col gap-0.5 border-l border-zinc-200 pl-2">
+        <div className="flex flex-col gap-0.5 border-l border-zinc-200 pl-1">
           <button
             onClick={() => moverParaCima(item.id)}
             disabled={index === 0}
-            className="p-1 text-zinc-400 hover:text-zinc-800 disabled:opacity-20 transition-colors"
+            className="p-0.5 text-zinc-400 hover:text-zinc-800 disabled:opacity-20 transition-colors"
             title="Mover para cima"
           >
             <CaretUp size={12} weight="bold" />
@@ -2759,7 +2882,7 @@ function ItemFila({
           <button
             onClick={() => moverParaBaixo(item.id)}
             disabled={index === total - 1}
-            className="p-1 text-zinc-400 hover:text-zinc-800 disabled:opacity-20 transition-colors"
+            className="p-0.5 text-zinc-400 hover:text-zinc-800 disabled:opacity-20 transition-colors"
             title="Mover para baixo"
           >
             <CaretDown size={12} weight="bold" />
@@ -2768,11 +2891,10 @@ function ItemFila({
 
         <button
           onClick={() => toggleConcluir(item.id)}
-          className={`p-1.5 ml-1 rounded-lg border border-transparent transition-colors ${
-            subAba === 'foco'
+          className={`p-1 rounded-lg border border-transparent transition-colors ${subAba === 'foco'
               ? 'text-zinc-400 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-200'
               : 'text-zinc-400 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-200'
-          }`}
+            }`}
           title="Concluir tarefa"
         >
           <Check size={14} weight="bold" />
@@ -2835,17 +2957,25 @@ export default function GlobalQueueView({
   moverParaCima,
   moverParaBaixo,
   alternarPrioridade,
+  organizarFilaPorPrioridade,
   removerTarefa,
   limparConcluidos,
 }) {
-  const [subAba, setSubAba] = useState('foco'); // 'foco' | 'rotina' | 'concluido'
+  const [subAba, setSubAba] = useState('foco');
+  const hojeISO = formatarDataISO(new Date());
 
   const filaFoco = tarefas
     .filter((t) => t.tipo === TIPOS_TAREFA.FOCO && !t.concluido)
     .sort((a, b) => (a.ordemFila || 0) - (b.ordemFila || 0));
 
+  // Opção B: rotina do ciclo atual (oculta as que já foram empurradas para o futuro)
   const filaRotina = tarefas
-    .filter((t) => t.tipo === TIPOS_TAREFA.CADENCIA && !t.concluido)
+    .filter((t) => {
+      if (t.tipo !== TIPOS_TAREFA.CADENCIA || t.concluido) return false;
+      const inicio = t.cadencia?.dataInicio || t.proximaData;
+      if (inicio && inicio > hojeISO) return false;
+      return true;
+    })
     .sort((a, b) => (a.ordemFila || 0) - (b.ordemFila || 0));
 
   const filaConcluido = tarefas
@@ -2864,36 +2994,33 @@ export default function GlobalQueueView({
   };
 
   return (
-    <div className="h-full flex flex-col pb-24 lg:pb-6 overflow-hidden">
+    <div className="h-full flex flex-col pb-2 lg:pb-6 overflow-hidden">
       {/* 1. SELETOR MOBILE (< lg) */}
       <div className="flex p-1 bg-zinc-100 rounded-lg border border-zinc-200 mb-3 shrink-0 lg:hidden">
         <button
           onClick={() => setSubAba('foco')}
-          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${
-            subAba === 'foco'
+          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${subAba === 'foco'
               ? 'bg-white text-emerald-800 shadow-sm border border-emerald-200/80 font-bold'
               : 'text-zinc-500 hover:text-zinc-800'
-          }`}
+            }`}
         >
           Foco
         </button>
         <button
           onClick={() => setSubAba('rotina')}
-          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${
-            subAba === 'rotina'
+          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${subAba === 'rotina'
               ? 'bg-white text-purple-800 shadow-sm border border-purple-200/80 font-bold'
               : 'text-zinc-500 hover:text-zinc-800'
-          }`}
+            }`}
         >
           Rotina
         </button>
         <button
           onClick={() => setSubAba('concluido')}
-          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${
-            subAba === 'concluido'
+          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${subAba === 'concluido'
               ? 'bg-white text-zinc-900 shadow-sm border border-zinc-300 font-bold'
               : 'text-zinc-500 hover:text-zinc-800'
-          }`}
+            }`}
         >
           Concluído
         </button>
@@ -2904,13 +3031,12 @@ export default function GlobalQueueView({
         <div className="flex items-center justify-between pb-1 mb-2 border-b border-zinc-200 shrink-0">
           <div>
             <h2
-              className={`text-xs uppercase tracking-wider font-bold ${
-                subAba === 'foco'
+              className={`text-xs uppercase tracking-wider font-bold ${subAba === 'foco'
                   ? THEME.foco.titulo
                   : subAba === 'rotina'
-                  ? THEME.rotina.titulo
-                  : 'text-zinc-600'
-              }`}
+                    ? THEME.rotina.titulo
+                    : 'text-zinc-600'
+                }`}
             >
               {subAba === 'foco' && 'Fila de Foco'}
               {subAba === 'rotina' && 'Fila de Rotina'}
@@ -2929,11 +3055,33 @@ export default function GlobalQueueView({
                 <span>Limpar</span>
               </button>
             )}
-            <span className="text-xs font-mono font-medium text-zinc-500">
-              {subAba === 'foco' && `${filaFoco.length} tarefas`}
-              {subAba === 'rotina' && `${filaRotina.length} rituais`}
-              {subAba === 'concluido' && `${filaConcluido.length} concluídas`}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-mono font-medium text-zinc-500">
+                {subAba === 'foco' && `${filaFoco.length} tarefas`}
+                {subAba === 'rotina' && `${filaRotina.length} rituais`}
+                {subAba === 'concluido' && `${filaConcluido.length} concluídas`}
+              </span>
+              {subAba === 'foco' && (
+                <button
+                  onClick={() => organizarFilaPorPrioridade && organizarFilaPorPrioridade(TIPOS_TAREFA.FOCO)}
+                  disabled={filaFoco.length <= 1}
+                  className="p-1 rounded text-zinc-400 hover:text-emerald-700 hover:bg-emerald-50 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                  title="Organizar por prioridade (P1 > P2 > P3)"
+                >
+                  <SortAscending size={13} weight="bold" />
+                </button>
+              )}
+              {subAba === 'rotina' && (
+                <button
+                  onClick={() => organizarFilaPorPrioridade && organizarFilaPorPrioridade(TIPOS_TAREFA.CADENCIA)}
+                  disabled={filaRotina.length <= 1}
+                  className="p-1 rounded text-zinc-400 hover:text-purple-700 hover:bg-purple-50 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                  title="Organizar por prioridade (P1 > P2 > P3)"
+                >
+                  <SortAscending size={13} weight="bold" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -2994,9 +3142,8 @@ export default function GlobalQueueView({
         </div>
       </div>
 
-      {/* 3. VISUALIZAÇÃO DESKTOP: 3 Colunas (Foco | Rotina | Concluído) */}
+      {/* 3. VISUALIZAÇÃO DESKTOP: 3 Colunas */}
       <div className="hidden lg:grid lg:grid-cols-3 lg:gap-6 lg:h-full lg:min-h-0">
-        {/* Coluna 1: Fila de Foco */}
         <div className="flex flex-col h-full min-h-0 border-r border-zinc-200 pr-4">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-200 shrink-0">
             <div>
@@ -3004,12 +3151,22 @@ export default function GlobalQueueView({
                 Fila de Foco
               </h2>
               <p className="text-[11px] text-zinc-500">
-                Os 3 primeiros alimentam a tela Hoje
+                Tarefas pendentes da esteira
               </p>
             </div>
-            <span className="text-xs font-mono font-medium text-emerald-800">
-              {filaFoco.length}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-mono font-medium text-emerald-800">
+                {filaFoco.length}
+              </span>
+              <button
+                onClick={() => organizarFilaPorPrioridade && organizarFilaPorPrioridade(TIPOS_TAREFA.FOCO)}
+                disabled={filaFoco.length <= 1}
+                className="p-1 rounded text-zinc-400 hover:text-emerald-700 hover:bg-emerald-50 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                title="Organizar por prioridade (P1 > P2 > P3)"
+              >
+                <SortAscending size={13} weight="bold" />
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-1">
@@ -3034,7 +3191,6 @@ export default function GlobalQueueView({
           </div>
         </div>
 
-        {/* Coluna 2: Fila de Rotina */}
         <div className="flex flex-col h-full min-h-0 border-r border-zinc-200 pr-4">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-200 shrink-0">
             <div>
@@ -3045,14 +3201,24 @@ export default function GlobalQueueView({
                 Precedência dos rituais
               </p>
             </div>
-            <span className="text-xs font-mono font-medium text-purple-800">
-              {filaRotina.length}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-mono font-medium text-purple-800">
+                {filaRotina.length}
+              </span>
+              <button
+                onClick={() => organizarFilaPorPrioridade && organizarFilaPorPrioridade(TIPOS_TAREFA.CADENCIA)}
+                disabled={filaRotina.length <= 1}
+                className="p-1 rounded text-zinc-400 hover:text-purple-700 hover:bg-purple-50 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                title="Organizar por prioridade (P1 > P2 > P3)"
+              >
+                <SortAscending size={13} weight="bold" />
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-1">
             {filaRotina.length === 0 ? (
-              <div className="text-center py-16 text-zinc-400 text-xs">Nenhuma rotina cadastrada.</div>
+              <div className="text-center py-16 text-zinc-400 text-xs">Nenhuma rotina pendente.</div>
             ) : (
               filaRotina.map((item, index) => (
                 <ItemFila
@@ -3072,7 +3238,6 @@ export default function GlobalQueueView({
           </div>
         </div>
 
-        {/* Coluna 3: Concluído (com Limpeza Geral e Exclusão Individual) */}
         <div className="flex flex-col h-full min-h-0">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-200 shrink-0">
             <div>
@@ -3121,15 +3286,14 @@ export default function GlobalQueueView({
   );
 }
 
-
 ### 📄 ARQUIVO: ./src/views/ManualView.jsx
 import React, { useState } from 'react';
-import { 
-  Sparkle, 
-  Clock, 
-  ArrowsClockwise, 
-  Target, 
-  FolderSimple, 
+import {
+  Sparkle,
+  Clock,
+  ArrowsClockwise,
+  Target,
+  FolderSimple,
   NotePencil,
   WarningCircle,
   CheckCircle,
@@ -3139,9 +3303,9 @@ import {
 import DynamicIcon from '../components/DynamicIcon';
 import { THEME } from '../colors';
 
-const ESTILO_KINDLE = {
+const ESTILO_LEITURA = {
   textAlign: 'justify',
-  textJustify: 'inter-word',
+  textWrap: 'pretty',
   hyphens: 'auto',
   WebkitHyphens: 'auto',
   textAlignLast: 'left',
@@ -3271,9 +3435,9 @@ export default function ManualView() {
         <h1 className="text-base font-bold tracking-tight text-zinc-900">
           Manual de Instruções
         </h1>
-        <p 
-          lang="pt-BR" 
-          style={ESTILO_KINDLE}
+        <p
+          lang="pt-BR"
+          style={ESTILO_LEITURA}
           className="text-xs text-zinc-600 mt-0.5 leading-relaxed"
         >
           O TaskFlow organiza seu dia a dia por meio de linguagem natural. Basta digitar o que você precisa fazer no campo superior e o sistema interpreta datas, horários e frequências de forma automática.
@@ -3287,11 +3451,10 @@ export default function ManualView() {
               <button
                 key={id}
                 onClick={() => setSecaoAtiva(id)}
-                className={`w-full sm:w-auto px-0.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-medium text-center transition-all border ${
-                  ativo
+                className={`w-full sm:w-auto px-0.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-medium text-center transition-all border ${ativo
                     ? corAtiva
                     : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900'
-                }`}
+                  }`}
               >
                 {label}
               </button>
@@ -3316,8 +3479,8 @@ export default function ManualView() {
               </div>
             </div>
 
-            <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
-              Você não precisa escolher pastas ou preencher formulários com vários campos para cada tarefa. O TaskFlow analisa o texto que você escreve e decide o destino exato da ação através de três perguntas diretas:
+            <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
+              Você não precisa escolher pastas ou preencher formulários com vários campos. O TaskFlow analisa o que você escreve e decide o destino exato da tarefa através de três perguntas diretas:
             </p>
 
             <div className="space-y-2.5 pt-1">
@@ -3326,7 +3489,7 @@ export default function ManualView() {
                   <span className="w-5 h-5 rounded-full bg-zinc-200 text-zinc-700 flex items-center justify-center text-[11px] font-mono">1</span>
                   <span>Tem horário marcado ou data específica no calendário?</span>
                 </div>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 pl-7 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed pt-0.5">
                   A tarefa é direcionada para a sua <strong>Agenda</strong>. Ela só tem relevância no dia e momento determinados para acontecer.
                 </p>
               </div>
@@ -3336,7 +3499,7 @@ export default function ManualView() {
                   <span className="w-5 h-5 rounded-full bg-zinc-200 text-zinc-700 flex items-center justify-center text-[11px] font-mono">2</span>
                   <span>Possui repetição, periodicidade ou período de execução?</span>
                 </div>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 pl-7 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed pt-0.5">
                   A tarefa é direcionada para o bloco de <strong>Rotina</strong>. São tarefas que formam seus hábitos e rituais contínuos (diários, semanais, quinzenais ou intercalados).
                 </p>
               </div>
@@ -3346,7 +3509,7 @@ export default function ManualView() {
                   <span className="w-5 h-5 rounded-full bg-zinc-200 text-zinc-700 flex items-center justify-center text-[11px] font-mono">3</span>
                   <span>É uma pendência avulsa, sem dia certo e sem repetição?</span>
                 </div>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 pl-7 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed pt-0.5">
                   A tarefa entra na sua fila de <strong>Foco</strong>. Ela aguarda na sequência prioritária para você executar uma coisa de cada vez, sem sobrecarga mental.
                 </p>
               </div>
@@ -3367,32 +3530,32 @@ export default function ManualView() {
               </div>
             </div>
 
-            <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
+            <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
               O bloco de Agenda reúne seus compromissos pontuais. Sempre que você insere um horário ou uma data do calendário, o TaskFlow separa essa atividade dos seus afazeres comuns para garantir que você não perca o prazo.
             </p>
 
             <div className="space-y-3 pt-1">
               <div className="space-y-1.5">
                 <h3 className="text-xs font-bold text-zinc-900">Compromissos com Horário Marcado</h3>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Utilize a preposição <strong>às</strong> ou o caractere <strong>@</strong> acompanhado da hora. O sistema calcula automaticamente o tempo restante para o evento e mantém a lista em estrita ordem cronológica:
                 </p>
-                <div className="p-2.5 rounded-xl border border-sky-200 bg-sky-50/70 font-mono text-xs text-sky-950 space-y-1">
+                <div className="p-2.5 rounded-xl border border-sky-200 bg-sky-50/70 text-xs font-medium text-sky-950 space-y-1.5">
                   <div>Dentista às 14:30</div>
-                  <div>Alinhamento com equipe @10h #pc</div>
+                  <div>Reunião de alinhamento @10h #pc</div>
                   <div>Buscar encomenda às 17h #rua</div>
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <h3 className="text-xs font-bold text-zinc-900">Compromissos com Data Específica (Dia Inteiro)</h3>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Se um evento precisa acontecer em um dia específico, mas não tem hora cravada, digite a data no formato <strong>DD/MM</strong> ou mencione a palavra <strong>dia</strong>. O item ficará guardado e aparecerá no topo da sua Agenda na data correspondente com a etiqueta <strong>Dia todo</strong>:
                 </p>
-                <div className="p-2.5 rounded-xl border border-sky-200 bg-sky-50/70 font-mono text-xs text-sky-950 space-y-1">
-                  <div>Entregar declaração do imposto de renda dia 15/10 #financas</div>
-                  <div>Pagar IPVA 20/01 #financas</div>
-                  <div>Aniversário de casamento 12/06 #pessoal</div>
+                <div className="p-2.5 rounded-xl border border-sky-200 bg-sky-50/70 text-xs font-medium text-sky-950 space-y-1.5">
+                  <div>Declaração IR dia 15/10 #financas</div>
+                  <div>Pagar IPVA dia 20/01 #financas</div>
+                  <div>Renovar CNH dia 12/06 #pessoal</div>
                 </div>
               </div>
             </div>
@@ -3412,44 +3575,44 @@ export default function ManualView() {
               </div>
             </div>
 
-            <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
+            <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
               Diferente de uma tarefa comum que você conclui e esquece, a rotina foi desenhada para a manutenção contínua da sua vida. Você pode agendar tarefas para dias fixos, intervalos espaçados ou janelas de oportunidade.
             </p>
 
             <div className="space-y-3 pt-1">
               <div className="space-y-1.5">
                 <h3 className="text-xs font-bold text-zinc-900">1. Dias Fixos da Semana ("Todo" ou "Toda")</h3>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Ideal para compromissos que ocorrem sempre no mesmo dia da semana ou diariamente:
                 </p>
-                <div className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 font-mono text-xs text-purple-950 space-y-1">
-                  <div>Limpar calhas todo sábado #casa/manutencao</div>
-                  <div>Revisão semanal toda sexta-feira #estudos</div>
+                <div className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 text-xs font-medium text-purple-950 space-y-1.5">
+                  <div>Limpar calhas todo sábado #casa</div>
+                  <div>Revisão toda sexta-feira #estudos</div>
                   <div>Regar as plantas todos os dias</div>
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <h3 className="text-xs font-bold text-zinc-900">2. Janelas de Execução (Início e Fim)</h3>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Para rituais que não precisam ser feitos em um dia exato, mas devem ser concluídos dentro de um determinado intervalo de tempo:
                 </p>
-                <div className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 font-mono text-xs text-purple-950 space-y-1">
-                  <div>Limpeza geral de segunda à sexta #casa/limpeza</div>
+                <div className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 text-xs font-medium text-purple-950 space-y-1.5">
+                  <div>Limpeza de segunda à sexta #casa</div>
                   <div>Tirar o lixo até terça #casa</div>
-                  <div>Pintura do portão começando sábado terminando domingo</div>
+                  <div>Pintura de sábado a domingo #casa</div>
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <h3 className="text-xs font-bold text-zinc-900">3. Intervalos e Semanas Intercaladas</h3>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Para atividades quinzenais ou rituais em que você quer trabalhar uma semana sim e outra não:
                 </p>
-                <div className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 font-mono text-xs text-purple-950 space-y-1">
-                  <div>Limpar academia de segunda à sexta a cada 14 dias #treino</div>
+                <div className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 text-xs font-medium text-purple-950 space-y-1.5">
+                  <div>Academia a cada 14 dias #treino</div>
                   <div>Conferir contas a cada 2 dias #financas</div>
-                  <div>Higienização profunda quinzenalmente #higiene</div>
+                  <div>Limpeza quinzenalmente #higiene</div>
                 </div>
               </div>
 
@@ -3458,10 +3621,10 @@ export default function ManualView() {
                   <WarningCircle size={16} />
                   <span>O que acontece se você não concluir a rotina no prazo?</span>
                 </div>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
-                  A tarefa <strong>nunca some da tela</strong> e não se multiplica em dezenas de tarefas acumuladas. Quando o prazo expira, ela ganha o selo de alerta <strong>Pendente</strong> e é fixada no <strong>topo absoluto do bloco</strong> até ser resolvida.
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
+                  A tarefa <strong>nunca some da tela</strong> e não se multiplica em dezenas de tarefas acumuladas. Quando o prazo expira, ela ganha o selo de alerta <strong>Pendente</strong> e é fixada no <strong>topo do bloco</strong> até ser resolvida.
                 </p>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
                   Havendo mais de uma rotina pendente, o TaskFlow as organiza por urgência: tarefas com prioridade <strong>P1</strong> assumem a frente, seguidas por <strong>P2</strong> e <strong>P3</strong>, mantendo as tarefas dentro do prazo na sequência normal logo abaixo.
                 </p>
               </div>
@@ -3482,14 +3645,14 @@ export default function ManualView() {
               </div>
             </div>
 
-            <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
+            <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
               A fila de Foco foi projetada para combater a paralisia causada por listas gigantescas. Se a tarefa é avulsa, sem data e sem repetição, ela aguarda a sua vez na fila.
             </p>
 
             <div className="space-y-3 pt-1">
               <div className="space-y-1.5">
                 <h3 className="text-xs font-bold text-zinc-900">Como funciona o painel de Foco</h3>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Em vez de bombardear você com dezenas de pendências, o TaskFlow apresenta exatamente <strong>1 tarefa em destaque principal</strong> e até <strong>2 tarefas no radar</strong> (que mostram o que vem logo em seguida).
                 </p>
               </div>
@@ -3499,18 +3662,22 @@ export default function ManualView() {
                   <CheckCircle size={16} />
                   <span>Ações Disponíveis na Tarefa Principal</span>
                 </div>
-                <ul className="text-xs text-zinc-700 space-y-1.5 pl-1">
-                  <li>• <strong>Concluir:</strong> Finaliza a tarefa imediatamente e traz a próxima da fila para a posição de destaque.</li>
-                  <li>• <strong>Pular para depois:</strong> Envia a tarefa atual para o fim da fila de foco, permitindo que a próxima tome a frente sem perder seu progresso.</li>
-                </ul>
+                <div className="space-y-1.5 text-xs text-zinc-700">
+                  <p lang="pt-BR" style={ESTILO_LEITURA} className="leading-relaxed">
+                    • <strong>Concluir:</strong> Finaliza a tarefa imediatamente e traz a próxima da fila para a posição de destaque.
+                  </p>
+                  <p lang="pt-BR" style={ESTILO_LEITURA} className="leading-relaxed">
+                    • <strong>Pular para depois:</strong> Envia a tarefa atual para o fim da fila de foco, permitindo que a próxima tome a frente sem perder seu progresso.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-1">
                 <h3 className="text-xs font-bold text-zinc-900">Exemplos de Tarefas de Foco</h3>
-                <div className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 font-mono text-xs text-emerald-950 space-y-1">
-                  <div>Comprar lâmpada para a garagem #casa/manutencao</div>
-                  <div>Escrever relatório de desempenho #pc</div>
-                  <div>Comprar pó de café e açúcar</div>
+                <div className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 text-xs font-medium text-emerald-950 space-y-1.5">
+                  <div>Comprar lâmpada #casa/manutencao</div>
+                  <div>Relatório de desempenho #pc</div>
+                  <div>Comprar café e açúcar</div>
                 </div>
               </div>
             </div>
@@ -3530,7 +3697,7 @@ export default function ManualView() {
               </div>
             </div>
 
-            <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
+            <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
               Ao digitar uma hashtag em qualquer lugar do texto, o TaskFlow organiza a tarefa na pasta temática correspondente e aplica o ícone automaticamente.
             </p>
 
@@ -3569,7 +3736,7 @@ export default function ManualView() {
               </div>
 
               <p className="text-[11px] text-zinc-500 pt-1">
-                * Em pastas compostas como <strong>#casa/limpeza</strong> ou <strong>#casa/manutencao</strong>, o sistema prioriza o ícone da subpasta mais específica (cascata bottom-up).
+                * Em pastas compostas como <strong>#casa/limpeza</strong> ou <strong>#casa/manutencao</strong>, o sistema prioriza o ícone da subpasta mais específica.
               </p>
             </div>
           </article>
@@ -3588,26 +3755,30 @@ export default function ManualView() {
               </div>
             </div>
 
-            <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-700 leading-relaxed">
+            <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-700 leading-relaxed">
               A aba de Notas funciona como seu bloco de anotações dinâmico. É o espaço perfeito para reuniões, listas de compras provisórias, rascunhos de planos ou pensamentos livres que ainda não foram estruturados.
             </p>
 
             <div className="space-y-3 pt-1">
               <div className="space-y-1.5">
                 <h3 className="text-xs font-bold text-zinc-900">Transformando Anotações em Tarefas Reais</h3>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Abaixo do editor da nota, cada linha escrita é tratada como um item independente. Ao lado de cada frase existe um botão de ação rápida:
                 </p>
-                <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/60 space-y-2 text-xs text-zinc-800">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-semibold text-[11px]">Criar Tarefa</span>
-                    <ArrowRight size={14} className="text-zinc-400" />
-                    <span>Envia a linha para o interpretador do TaskFlow, cadastrando-a no sistema imediatamente.</span>
+                <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/60 space-y-3 text-xs text-zinc-800">
+                  <div className="flex items-start gap-2">
+                    <span className="shrink-0 whitespace-nowrap px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-semibold text-[11px]">Criar Tarefa</span>
+                    <ArrowRight size={14} className="text-zinc-400 shrink-0 mt-0.5" />
+                    <p lang="pt-BR" style={ESTILO_LEITURA} className="leading-relaxed flex-1 min-w-0 text-zinc-700">
+                      Envia a linha para o interpretador do TaskFlow, cadastrando-a no sistema imediatamente.
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-[11px]">Adicionada</span>
-                    <ArrowRight size={14} className="text-zinc-400" />
-                    <span>O botão se transforma de forma permanente, informando visualmente que aquela pendência já foi despachada para suas listas.</span>
+                  <div className="flex items-start gap-2">
+                    <span className="shrink-0 whitespace-nowrap px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-[11px]">Adicionada</span>
+                    <ArrowRight size={14} className="text-zinc-400 shrink-0 mt-0.5" />
+                    <p lang="pt-BR" style={ESTILO_LEITURA} className="leading-relaxed flex-1 min-w-0 text-zinc-700">
+                      O botão se transforma de forma permanente, informando visualmente que aquela pendência já foi despachada para suas listas.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -3617,7 +3788,7 @@ export default function ManualView() {
                   <Lightbulb size={16} className="text-amber-600" />
                   <span>Dica de Produtividade</span>
                 </div>
-                <p lang="pt-BR" style={ESTILO_KINDLE} className="text-xs text-zinc-600 leading-relaxed">
+                <p lang="pt-BR" style={ESTILO_LEITURA} className="text-xs text-zinc-600 leading-relaxed">
                   Você pode escrever as linhas da sua nota já utilizando as regras normais do app (como <em>Trocar bateria às 15h #rua</em> ou <em>Revisar contrato todo sábado</em>). Ao tocar no botão de envio, o sistema respeitará os horários, tags e periodicidades normalmente.
                 </p>
               </div>
@@ -3983,18 +4154,18 @@ export default function NotesView({
 
 ### 📄 ARQUIVO: ./src/views/TodayView.jsx
 import React, { useState, useEffect } from 'react';
-import { Circle, CheckCircle, ArrowCounterClockwise } from '@phosphor-icons/react';
+import { Circle } from '@phosphor-icons/react';
 import DynamicIcon from '../components/DynamicIcon';
 import { TIPOS_TAREFA } from '../types';
 import { THEME } from '../colors';
 
 const PESO_PRIORIDADE = {
-  P1: 1,
-  P2: 2,
-  P3: 3,
+  p1: 1,
+  p2: 2,
+  p3: 3,
 };
 
-export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) {
+export default function TodayView({ tarefas, toggleConcluir }) {
   const [agora, setAgora] = useState(new Date());
 
   useEffect(() => {
@@ -4035,37 +4206,36 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
     return `em ${h}h ${m > 0 ? `${m}m` : ''}`;
   };
 
+  // Regra Estrita: apenas ganha 'Pendente' quando o período JÁ TERMINOU (estritamente posterior)
   const rotinaPendenteOuAtrasada = (item) => {
-    // Alerta de dia limite atingido
-    if (item.cadencia?.dataLimite && item.cadencia.dataLimite <= hojeISO) return true;
-    // Legado ou rotina vencida
-    if (item.proximaData && item.proximaData < hojeISO) return true;
+    if (item.cadencia?.dataLimite) {
+      return hojeISO > item.cadencia.dataLimite;
+    }
+    if (item.proximaData) {
+      return hojeISO > item.proximaData;
+    }
     return false;
   };
 
-  // 1. Agenda: compromissos do dia (com horário ou com data marcada para hoje)
+  // 1. Agenda: compromissos do dia
   const agendadosTarefas = tarefas
     .filter((t) => {
       if (t.tipo !== TIPOS_TAREFA.AGENDADO || t.concluido) return false;
-      // Se tiver data específica, só exibe no dia correspondente (ou atrasados)
       if (t.proximaData && t.proximaData > hojeISO) return false;
 
-      // Se tiver horário, esconde os que já passaram há muito tempo
       if (t.horario) {
         const minAlvo = converterParaMinutos(t.horario);
         return minAlvo !== null && minAlvo >= minutosAtuais;
       }
-      // Se não tem horário, mas é data marcada para hoje (ou anterior), exibe o dia todo
       return true;
     })
     .sort((a, b) => {
-      // Sem horário fica no topo do dia ou logo antes dos compromissos com hora
       if (!a.horario && b.horario) return -1;
       if (a.horario && !b.horario) return 1;
       return (a.horario || '').localeCompare(b.horario || '');
     });
 
-  // 2. Rotina: ativadas a partir de dataInicio e ordenadas com dia limite no topo
+  // 2. Rotina: ativadas a partir de dataInicio
   const rotinaTarefas = tarefas
     .filter((t) => {
       if (t.tipo !== TIPOS_TAREFA.CADENCIA || t.concluido) return false;
@@ -4077,109 +4247,128 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
       const pendenteA = rotinaPendenteOuAtrasada(a);
       const pendenteB = rotinaPendenteOuAtrasada(b);
 
-      // 1. Apenas atrasadas e pendentes assumem os primeiros lugares
       if (pendenteA && !pendenteB) return -1;
       if (!pendenteA && pendenteB) return 1;
 
-      // 2. Entre as pendentes, prioridade define a ordem (P1 > P2 > P3)
       if (pendenteA && pendenteB) {
-        const pesoA = PESO_PRIORIDADE[a.prioridade] || 2;
-        const pesoB = PESO_PRIORIDADE[b.prioridade] || 2;
-        if (pesoA !== pesoB) {
-          return pesoA - pesoB;
-        }
-        // Desempate por ordem de chegada na fila
+        const pesoA = PESO_PRIORIDADE[a.prioridade?.toLowerCase()] || 2;
+        const pesoB = PESO_PRIORIDADE[b.prioridade?.toLowerCase()] || 2;
+        if (pesoA !== pesoB) return pesoA - pesoB;
         return (a.ordemFila || 0) - (b.ordemFila || 0);
       }
 
-      // 3. As restantes (no prazo) permanecem como estavam
       return (a.ordemFila || 0) - (b.ordemFila || 0);
     });
 
-  // 3. Foco: 1 principal + 2 no radar (total 3)
+  // 3. Foco: lista sequencial de pendências ativas
   const filaFoco = tarefas
     .filter((t) => t.tipo === TIPOS_TAREFA.FOCO && !t.concluido)
     .sort((a, b) => (a.ordemFila || 0) - (b.ordemFila || 0));
 
-  const cardPrincipal = filaFoco[0] || null;
-  const cardsRadar = filaFoco.slice(1, 3);
-
   return (
-    <div className="h-full flex flex-col justify-between gap-2.5 overflow-hidden lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
+    <div className="h-full flex flex-col justify-between gap-3 overflow-hidden lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
       {/* 1. BLOCO AGENDA */}
-      <section className="flex flex-col shrink-0 lg:h-full lg:min-h-0 lg:flex-1">
+      <section className="flex-1 min-h-0 flex flex-col lg:h-full">
         <div className="flex items-center justify-between mb-1.5 shrink-0">
           <h2 className={`text-xs uppercase tracking-wider font-bold ${THEME.agendados.titulo}`}>
             Agenda
           </h2>
-          <span className="text-[11px] font-mono text-zinc-400 lg:inline hidden">
+          <span className="text-[11px] font-mono text-zinc-400">
             {agendadosTarefas.length} {agendadosTarefas.length === 1 ? 'compromisso' : 'compromissos'}
           </span>
         </div>
 
         {agendadosTarefas.length > 0 ? (
-          <div className="h-[154px] lg:h-full lg:flex-1 overflow-y-auto space-y-2 no-scrollbar pr-0.5">
-            {agendadosTarefas.map((item) => (
-              <div
-                key={item.id}
-                className={`flex items-center justify-between px-3.5 py-3 rounded-xl border shadow-sm shrink-0 ${THEME.agendados.cardBg} ${THEME.agendados.cardBorder}`}
-              >
-                <div className="flex items-center gap-3 min-w-0 pr-2">
-                  <DynamicIcon name={item.icone || 'Clock'} size={18} className={`shrink-0 ${THEME.agendados.icone}`} />
-                  <span className={`text-sm font-semibold truncate ${THEME.agendados.texto}`}>{item.titulo}</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs shrink-0">
-                  {item.horario ? (
-                    <>
-                      <span className={`font-mono font-bold ${THEME.agendados.horario}`}>{item.horario}</span>
-                      <span className={THEME.agendados.tempoRestante}>({calcularTempoRestante(item.horario)})</span>
-                    </>
-                  ) : (
-                    <span className={`font-mono font-semibold px-2 py-0.5 rounded text-[11px] ${THEME.agendados.cardBg} ${THEME.agendados.horario}`}>
-                      Dia todo
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 no-scrollbar pr-0.5">
+            {agendadosTarefas.map((item, index) => {
+              const ehPrimeiro = index === 0;
+              const estiloCard = ehPrimeiro
+                ? 'bg-sky-100/90 border-sky-300/90 shadow-xs'
+                : 'bg-sky-50/70 border-sky-200/80 shadow-xs';
+
+              return (
+                <div
+                  key={item.id}
+                  className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-colors shrink-0 ${estiloCard}`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <DynamicIcon
+                      name={item.icone || 'Clock'}
+                      size={16}
+                      className={`shrink-0 ${ehPrimeiro ? 'text-sky-700' : THEME.agendados.icone}`}
+                    />
+                    <span className={`text-xs font-semibold truncate ${THEME.agendados.texto}`}>
+                      {item.titulo}
                     </span>
-                  )}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs shrink-0">
+                    {item.horario ? (
+                      <>
+                        <span className={`font-mono font-bold text-xs ${THEME.agendados.horario}`}>
+                          {item.horario}
+                        </span>
+                        <span className={`text-[11px] ${THEME.agendados.tempoRestante}`}>
+                          ({calcularTempoRestante(item.horario)})
+                        </span>
+                      </>
+                    ) : (
+                      <span className="font-mono font-semibold px-1.5 py-0.5 rounded text-[10px] bg-sky-200/60 text-sky-900">
+                        Dia todo
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
-          <div className={`h-[154px] lg:h-full lg:flex-1 flex items-center justify-center rounded-xl border border-dashed text-xs text-center shrink-0 ${THEME.agendados.cardBg} ${THEME.agendados.cardBorder} ${THEME.agendados.tempoRestante}`}>
+          <div className="flex-1 min-h-0 flex items-center justify-center rounded-xl border border-dashed border-sky-200 bg-sky-50/40 text-xs text-center text-sky-600/70">
             Nenhum compromisso agendado
           </div>
         )}
       </section>
 
       {/* 2. BLOCO ROTINA */}
-      <section className="flex flex-col shrink-0 lg:h-full lg:min-h-0 lg:flex-1">
+      <section className="flex-1 min-h-0 flex flex-col lg:h-full">
         <div className="flex items-center justify-between mb-1.5 shrink-0">
           <h2 className={`text-xs uppercase tracking-wider font-bold ${THEME.rotina.titulo}`}>
             Rotina
           </h2>
-          <span className="text-[11px] font-mono text-zinc-400 lg:inline hidden">
+          <span className="text-[11px] font-mono text-zinc-400">
             {rotinaTarefas.length} {rotinaTarefas.length === 1 ? 'ritual' : 'rituais'}
           </span>
         </div>
 
         {rotinaTarefas.length > 0 ? (
-          <div className="h-[154px] lg:h-full lg:flex-1 overflow-y-auto space-y-2 no-scrollbar pr-0.5">
-            {rotinaTarefas.map((item) => {
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 no-scrollbar pr-0.5">
+            {rotinaTarefas.map((item, index) => {
               const pendente = rotinaPendenteOuAtrasada(item);
+              const ehPrimeiro = index === 0;
+              const estiloCard = ehPrimeiro
+                ? 'bg-purple-100/90 border-purple-300/90 shadow-xs'
+                : 'bg-purple-50/70 border-purple-200/80 shadow-xs';
+
               return (
                 <div
                   key={item.id}
                   onClick={() => toggleConcluir(item.id)}
-                  className={`flex items-center justify-between px-3.5 py-3 rounded-xl border cursor-pointer transition-colors shadow-sm shrink-0 ${THEME.rotina.cardBg} ${THEME.rotina.cardBorder}`}
+                  className={`flex items-center justify-between px-3 py-2 rounded-xl border cursor-pointer transition-colors shrink-0 ${estiloCard}`}
                 >
-                  <div className="flex items-center gap-3 min-w-0 pr-2">
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
                     <button className={`transition-colors shrink-0 ${THEME.rotina.checkBtn}`}>
-                      <Circle size={18} />
+                      <Circle size={16} />
                     </button>
-                    <DynamicIcon name={item.icone} size={18} className={`shrink-0 ${THEME.rotina.icone}`} />
-                    <span className={`text-sm font-medium truncate ${THEME.rotina.texto}`}>{item.titulo}</span>
+                    <DynamicIcon
+                      name={item.icone}
+                      size={16}
+                      className={`shrink-0 ${ehPrimeiro ? 'text-purple-700' : THEME.rotina.icone}`}
+                    />
+                    <span className={`text-xs font-medium truncate ${THEME.rotina.texto}`}>
+                      {item.titulo}
+                    </span>
                   </div>
                   {pendente && (
-                    <span className={`text-[11px] px-2 py-0.5 rounded border font-medium shrink-0 ${THEME.rotina.alertaAtrasado}`}>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium shrink-0 ${THEME.rotina.alertaAtrasado}`}>
                       Pendente
                     </span>
                   )}
@@ -4188,95 +4377,63 @@ export default function TodayView({ tarefas, toggleConcluir, pularParaDepois }) 
             })}
           </div>
         ) : (
-          <div className={`h-[154px] lg:h-full lg:flex-1 flex items-center justify-center rounded-xl border border-dashed text-xs text-center shrink-0 ${THEME.rotina.cardBg} ${THEME.rotina.cardBorder} text-purple-400`}>
+          <div className="flex-1 min-h-0 flex items-center justify-center rounded-xl border border-dashed border-purple-200 bg-purple-50/40 text-xs text-center text-purple-600/70">
             Nenhuma rotina pendente
           </div>
         )}
       </section>
 
       {/* 3. BLOCO FOCO */}
-      <section className="flex-1 min-h-0 flex flex-col lg:h-full lg:flex-1 lg:justify-start lg:gap-3">
+      <section className="flex-1 min-h-0 flex flex-col lg:h-full">
         <div className="flex items-center justify-between mb-1.5 shrink-0">
           <h2 className={`text-xs uppercase tracking-wider font-bold ${THEME.foco.titulo}`}>
             Foco
           </h2>
-          <span className="text-[11px] font-mono text-zinc-400 lg:inline hidden">
+          <span className="text-[11px] font-mono text-zinc-400">
             {filaFoco.length} {filaFoco.length === 1 ? 'tarefa' : 'tarefas'}
           </span>
         </div>
 
-        {/* Card Principal de Foco */}
-        {cardPrincipal ? (
-          <div className={`px-3.5 py-2.5 rounded-xl border shadow-sm flex flex-col shrink-0 ${THEME.foco.principalBg} ${THEME.foco.principalBorder}`}>
-            <div className="flex items-center gap-2.5">
-              <span className="font-mono font-bold text-sm text-emerald-800 shrink-0">
-                1.
-              </span>
-              <DynamicIcon
-                name={cardPrincipal.icone}
-                size={18}
-                weight="bold"
-                className={`shrink-0 ${THEME.foco.principalIcone}`}
-              />
-              <h3 className={`text-sm font-bold leading-normal truncate flex-1 min-w-0 ${THEME.foco.principalTexto}`}>
-                {cardPrincipal.titulo}
-              </h3>
-            </div>
+        {filaFoco.length > 0 ? (
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 no-scrollbar pr-0.5">
+            {filaFoco.map((item, index) => {
+              const ehPrimeiro = index === 0;
+              const estiloCard = ehPrimeiro
+                ? 'bg-emerald-100/90 border-emerald-300/90 shadow-xs'
+                : 'bg-emerald-50/70 border-emerald-200/80 shadow-xs';
 
-            <div className={`flex items-center justify-between pt-2 mt-2 border-t ${THEME.foco.principalDivisor}`}>
-              <button
-                onClick={() => pularParaDepois(cardPrincipal.id)}
-                className={`flex items-center gap-1.5 text-xs transition-colors font-medium ${THEME.foco.pularBtn}`}
-                title="Mover para o fim da fila de foco"
-              >
-                <ArrowCounterClockwise size={14} />
-                Pular para depois
-              </button>
-
-              <button
-                onClick={() => toggleConcluir(cardPrincipal.id)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${THEME.foco.concluirBtn}`}
-              >
-                <CheckCircle size={15} weight="bold" />
-                Concluir
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className={`p-3 rounded-xl border border-dashed flex items-center justify-center text-center text-xs ${THEME.foco.vazioBg}`}>
-            Nenhuma tarefa na fila de foco para hoje.
-          </div>
-        )}
-
-        {/* Cards no Radar */}
-        {cardsRadar.length > 0 && (
-          <div className="shrink-0 flex flex-col lg:flex-1 lg:min-h-0">
-            <span className={`text-[11px] font-semibold uppercase tracking-wide my-1.5 shrink-0 ${THEME.foco.radarTitulo}`}>
-              A seguir no radar ({cardsRadar.length})
-            </span>
-            <div className="space-y-2">
-              {cardsRadar.map((item, index) => (
+              return (
                 <div
                   key={item.id}
-                  className={`flex items-center gap-3 px-3.5 py-3 rounded-xl border shadow-sm shrink-0 ${THEME.foco.radarBg} ${THEME.foco.radarBorder}`}
+                  onClick={() => toggleConcluir(item.id)}
+                  className={`flex items-center justify-between px-3 py-2 rounded-xl border cursor-pointer transition-colors shrink-0 ${estiloCard}`}
                 >
-                  <span className={`font-mono font-bold text-xs shrink-0 ${THEME.foco.radarNumero}`}>
-                    {index + 2}.
-                  </span>
-                  <DynamicIcon name={item.icone} size={18} className={`shrink-0 ${THEME.foco.radarIcone}`} />
-                  <span className={`truncate text-sm font-medium ${THEME.foco.radarTexto}`}>
-                    {item.titulo}
-                  </span>
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <button className="text-emerald-500 hover:text-emerald-700 transition-colors shrink-0">
+                      <Circle size={16} />
+                    </button>
+                    <DynamicIcon
+                      name={item.icone}
+                      size={16}
+                      className={`shrink-0 ${ehPrimeiro ? 'text-emerald-800' : 'text-emerald-700'}`}
+                    />
+                    <span className="text-xs font-medium text-zinc-900 truncate">
+                      {item.titulo}
+                    </span>
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0 flex items-center justify-center rounded-xl border border-dashed border-emerald-200 bg-emerald-50/40 text-xs text-center text-emerald-700/70">
+            Nenhuma tarefa na fila de foco
           </div>
         )}
       </section>
     </div>
   );
 }
-
 
 ### 📄 ARQUIVO: ./TASKFLOW_MASTER.md
 # 🧠 TASKFLOW_MASTER.md
@@ -4296,6 +4453,7 @@ O **TaskFlow** é um Progressive Web App (PWA) de gerenciamento de tarefas minim
 - **Ambiente Operacional:** Windows.
 - **Terminal Padrão:** Git Bash integrado ao VSCode.
 - **Diretriz para IAs:** Todos os comandos de terminal sugeridos devem ser estritamente compatíveis com a sintaxe do Git Bash / Bash no ambiente Windows.
+- **Sempre proibido inferir, ao receber instruções pelas prompts precisa saber como está e como tem que ser antes de realizar qualquer alteração. 
 
 ---
 
@@ -4318,18 +4476,18 @@ Esta seção documenta as dependências que residem fora do repositório local e
 
 ---
 
-## 4. Protocolo de Inicialização para IAs (Geração do Dumper)
-**Ação Obrigatória:** Ao iniciar uma nova conversa técnica, a IA deve primeiro orientar o usuário a executar o comando abaixo no Git Bash. Este script varre a estrutura do projeto e consolida a árvore de arquivos e o código-fonte atualizado no arquivo `TASKFLOW_DUMPER.md`.
+## 4. Protocolo de Inicialização para IAs (Geração do Dumper Seguro)
+**Ação Obrigatória:** Ao iniciar uma nova conversa técnica, a IA deve primeiro orientar o usuário a executar o comando abaixo no Git Bash. Este script varre a estrutura do projeto com exclusão estrita de arquivos sensíveis, consolidando a árvore e o código em `TASKFLOW_DUMPER.md`.
 
 ```bash
 OUTPUT="TASKFLOW_DUMPER.md"
-echo "Gerando Snapshot Técnico do TaskFlow..."
+echo "Gerando Snapshot Técnico Seguro do TaskFlow..."
 echo "# 🖨️ TASKFLOW_DUMPER.md" > "$OUTPUT"
 echo "Snapshot técnico gerado automaticamente com a estrutura e código da plataforma." >> "$OUTPUT"
 echo -e "\n## 1. ÁRVORE DE DIRETÓRIOS" >> "$OUTPUT"
-find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/dist/*" -not -path "*/dev-dist/*" -not -path "*/build/*" -not -name "$OUTPUT" | sort >> "$OUTPUT"
+find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/dist/*" -not -path "*/dev-dist/*" -not -path "*/build/*" -not -name "*.env*" -not -name ".env*" -not -name "backup*" -not -name "$OUTPUT" |sort >> "$OUTPUT"
 echo -e "\n## 2. CÓDIGO FONTE INTEGRAL" >> "$OUTPUT"
-find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/dist/*" -not -path "*/dev-dist/*" -not -path "*/build/*" -not -name "$OUTPUT" -not -name "*.png" -not -name "*.jpg" -not -name "*.svg" -not -name "*.ico" -not -name "package-lock.json" | sort | while read -r file; do
+find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/dist/*" -not -path "*/dev-dist/*" -not -path "*/build/*" -not -name "*.env*" -not -name ".env*" -not -name "backup*" -not -name "$OUTPUT" -not -name "*.png" -not -name "*.jpg" -not -name "*.svg" -not -name "*.ico" -not -name "package-lock.json" | sort | while read -r file; do
   echo -e "\n\n### 📄 ARQUIVO: $file" >> "$OUTPUT"
   cat "$file" >> "$OUTPUT"
 done
@@ -4342,7 +4500,7 @@ echo "Concluído! Arquivo $OUTPUT pronto para leitura."
 
 ## 5. Protocolo de Autoatualização (Encerramento da Sessão)
 **Ação Obrigatória:** Antes de dar como finalizado qualquer atendimento que altere a arquitetura, estrutura ou escopo da plataforma, a IA deve:
-1. Avaliar se as alterações realizadas modificaram integrações externas (Supabase, Google Calendar, etc.), dependências estruturais ou fluxos de trabalho descritos neste documento.
+1. Avaliar se as alterações realizadas modificaram integrações externas (Supabase, Google Calendar, etc), dependências estruturais ou fluxos de trabalho descritos neste documento.
 2. Caso identifique divergências, fornecer explicitamente ao usuário a versão revisada e atualizada do `TASKFLOW_MASTER.md`.
 3. Instruir o usuário a gerar uma nova versão do `TASKFLOW_DUMPER.md` caso arquivos tenham sido criados, movidos ou excluídos.
 
@@ -4355,6 +4513,11 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    watch: {
+      ignored: ['**/*.md'],
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),

@@ -38,18 +38,18 @@ Esta seção documenta as dependências que residem fora do repositório local e
 
 ---
 
-## 4. Protocolo de Inicialização para IAs (Geração do Dumper)
-**Ação Obrigatória:** Ao iniciar uma nova conversa técnica, a IA deve primeiro orientar o usuário a executar o comando abaixo no Git Bash. Este script varre a estrutura do projeto e consolida a árvore de arquivos e o código-fonte atualizado no arquivo `TASKFLOW_DUMPER.md`.
+## 4. Protocolo de Inicialização para IAs (Geração do Dumper Seguro)
+**Ação Obrigatória:** Ao iniciar uma nova conversa técnica, a IA deve primeiro orientar o usuário a executar o comando abaixo no Git Bash. Este script varre a estrutura do projeto com exclusão estrita de arquivos sensíveis, consolidando a árvore e o código em `TASKFLOW_DUMPER.md`.
 
 ```bash
 OUTPUT="TASKFLOW_DUMPER.md"
-echo "Gerando Snapshot Técnico do TaskFlow..."
+echo "Gerando Snapshot Técnico Seguro do TaskFlow..."
 echo "# 🖨️ TASKFLOW_DUMPER.md" > "$OUTPUT"
 echo "Snapshot técnico gerado automaticamente com a estrutura e código da plataforma." >> "$OUTPUT"
 echo -e "\n## 1. ÁRVORE DE DIRETÓRIOS" >> "$OUTPUT"
-find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/dist/*" -not -path "*/dev-dist/*" -not -path "*/build/*" -not -name "$OUTPUT" | sort >> "$OUTPUT"
+find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/dist/*" -not -path "*/dev-dist/*" -not -path "*/build/*" -not -name "*.env*" -not -name ".env*" -not -name "backup*" -not -name "$OUTPUT" |sort >> "$OUTPUT"
 echo -e "\n## 2. CÓDIGO FONTE INTEGRAL" >> "$OUTPUT"
-find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/dist/*" -not -path "*/dev-dist/*" -not -path "*/build/*" -not -name "$OUTPUT" -not -name "*.png" -not -name "*.jpg" -not -name "*.svg" -not -name "*.ico" -not -name "package-lock.json" | sort | while read -r file; do
+find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/dist/*" -not -path "*/dev-dist/*" -not -path "*/build/*" -not -name "*.env*" -not -name ".env*" -not -name "backup*" -not -name "$OUTPUT" -not -name "*.png" -not -name "*.jpg" -not -name "*.svg" -not -name "*.ico" -not -name "package-lock.json" | sort | while read -r file; do
   echo -e "\n\n### 📄 ARQUIVO: $file" >> "$OUTPUT"
   cat "$file" >> "$OUTPUT"
 done
