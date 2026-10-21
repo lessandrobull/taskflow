@@ -19,6 +19,21 @@ import { THEME } from '../colors';
 
 const PASTAS_STORAGE_KEY = 'taskflow_pastas_abertas_v1';
 
+function ordenarTarefasContexto(lista, ehAgenda) {
+  return [...lista].sort((a, b) => {
+    if (ehAgenda) {
+      if (!a.horario && b.horario) return -1;
+      if (a.horario && !b.horario) return 1;
+      if (a.horario && b.horario) {
+        const comp = (a.horario || '').localeCompare(b.horario || '');
+        if (comp !== 0) return comp;
+      }
+    }
+    return (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR');
+  });
+}
+
+
 function CardTarefaContexto({
   tarefa,
   editandoId,
@@ -225,9 +240,8 @@ function NoPastaMobile({
     a.nome.localeCompare(b.nome)
   );
 
-  const tarefasOrdenadas = [...no.tarefas].sort((a, b) =>
-    (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR')
-  );
+  const ehAgendaNo = no.caminhoCompleto === 'agenda' || no.caminhoCompleto.startsWith('agenda/');
+  const tarefasOrdenadas = ordenarTarefasContexto(no.tarefas, ehAgendaNo);
 
   return (
     <div className="space-y-1">
@@ -530,12 +544,14 @@ export default function ContextsView({
     });
   };
 
-  const tarefasDoContextoDesktop = tarefasAtivas
-    .filter((t) => {
+  const ehAgendaDesktop = caminhoSelecionado === 'agenda' || caminhoSelecionado.startsWith('agenda/');
+  const tarefasDoContextoDesktop = ordenarTarefasContexto(
+    tarefasAtivas.filter((t) => {
       const ctx = (t.contexto || 'geral').toLowerCase().trim();
       return ctx === caminhoSelecionado || ctx.startsWith(`${caminhoSelecionado}/`);
-    })
-    .sort((a, b) => (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR'));
+    }),
+    ehAgendaDesktop
+  );
 
   const handleCriarItemDesktop = (e) => {
     e.preventDefault();
