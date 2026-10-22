@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// https://vite.dev/config/
 export default defineConfig({
   server: {
     watch: {
@@ -17,10 +16,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       workbox: {
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // Eleva o limite para 6 MB
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
       },
       devOptions: {
-        enabled: true,
+        enabled: false, // Desativa Service Worker durante desenvolvimento local
       },
       manifest: {
         name: 'TaskFlow',

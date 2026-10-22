@@ -16,7 +16,12 @@ export function useTasks() {
   const [tarefas, setTarefas] = useState(() => {
     try {
       const salvas = localStorage.getItem(STORAGE_KEY);
-      return salvas ? JSON.parse(salvas) : DADOS_INICIAIS;
+      if (!salvas) return DADOS_INICIAIS;
+      const parsed = JSON.parse(salvas);
+      // Sanitização: descarta dados legados de agenda do cache local para re-sincronização limpa
+      return Array.isArray(parsed)
+        ? parsed.filter((t) => !String(t.id).startsWith('gcal-'))
+        : DADOS_INICIAIS;
     } catch {
       return DADOS_INICIAIS;
     }
@@ -93,40 +98,52 @@ export function useTasks() {
     setSincronizandoAgenda(true);
     try {
       const eventos = await buscarEventosHoje();
-      if (eventos.length > 0) {
-        setTarefas((prev) => {
-          const idsExistentes = new Set(prev.map((t) => t.id));
+      if (!Array.isArray(eventos) || eventos.length === 0) return;
 
-          const novosItens = eventos
-            .filter((ev) => !idsExistentes.has(`gcal-${ev.id}`))
-            .map((ev) => ({
-              id: `gcal-${ev.id}`,
-              titulo: ev.titulo,
-              icone: 'Clock',
-              contexto: 'agenda',
-              tipo: TIPOS_TAREFA.AGENDADO,
-              horario: ev.horario,
-              cadencia: null,
-              proximaData: null,
-              prioridade: PRIORIDADES.P1,
-              ordemFila: 0,
-              concluido: false,
-              concluidoEm: null,
-            }));
+      // 1. Gera IDs compostos e elimina duplicatas de horário no mesmo lote
+      const mapaNovos = new Map();
+      for (const ev of eventos) {
+        if (!ev || !ev.titulo) continue;
 
-          if (novosItens.length > 0) {
-            (async () => {
-              try {
-                await supabase.from('tarefas').upsert(novosItens);
-              } catch (e) {
-                console.error('Falha ao subir eventos para o Supabase:', e);
-              }
-            })();
-          }
+        const sufixoHorario = (ev.horario || 'diatodo').replace(/[^a-zA-Z0-9]/g, '');
+        const idUnico = `gcal-${ev.id || 'evento'}-${sufixoHorario}`;
 
-          return [...novosItens, ...prev];
-        });
+        if (!mapaNovos.has(idUnico)) {
+          mapaNovos.set(idUnico, {
+            id: idUnico,
+            titulo: ev.titulo,
+            icone: 'Clock',
+            contexto: 'agenda',
+            tipo: TIPOS_TAREFA.AGENDADO,
+            horario: ev.horario || null,
+            cadencia: null,
+            proximaData: null,
+            prioridade: PRIORIDADES.P1,
+            ordemFila: 0,
+            concluido: false,
+            concluidoEm: null,
+          });
+        }
       }
+
+      const novosItens = Array.from(mapaNovos.values());
+
+      // 2. Grava de forma segura no Supabase com chaves únicas garantidas
+      if (novosItens.length > 0) {
+        const { error } = await supabase.from('tarefas').upsert(novosItens);
+        if (error) {
+          console.error('Falha ao subir eventos para o Supabase:', error);
+        }
+      }
+
+      // 3. Atualiza a interface local sem sobrescrever ou duplicar
+      setTarefas((prev) => {
+        const idsExistentes = new Set(prev.map((t) => t.id));
+        const itensParaAdicionar = novosItens.filter((t) => !idsExistentes.has(t.id));
+        return itensParaAdicionar.length > 0 ? [...itensParaAdicionar, ...prev] : prev;
+      });
+    } catch (err) {
+      console.error('Erro na sincronização da agenda:', err);
     } finally {
       setSincronizandoAgenda(false);
     }
@@ -195,16 +212,16 @@ export function useTasks() {
 
       const novaCadencia = itemAtual.cadencia
         ? {
-            ...itemAtual.cadencia,
-            intervaloDias: intervalo,
-            dataInicio: novaDataInicio,
-            dataLimite: novaDataLimite,
-          }
+          ...itemAtual.cadencia,
+          intervaloDias: intervalo,
+          dataInicio: novaDataInicio,
+          dataLimite: novaDataLimite,
+        }
         : {
-            intervaloDias: intervalo,
-            dataInicio: novaDataInicio,
-            dataLimite: novaDataLimite,
-          };
+          intervaloDias: intervalo,
+          dataInicio: novaDataInicio,
+          dataLimite: novaDataLimite,
+        };
 
       atualizacao = {
         concluido: false,

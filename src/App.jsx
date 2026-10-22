@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from './services/supabase';
 import { useTasks } from './useTasks';
 import { useNotes } from './useNotes';
 import TodayView from './views/TodayView';
@@ -6,11 +7,12 @@ import GlobalQueueView from './views/GlobalQueueView';
 import ContextsView from './views/ContextsView';
 import NotesView from './views/NotesView';
 import ManualView from './views/ManualView';
+import LoginView from './views/LoginView';
 import BottomNav from './components/BottomNav';
 import QuickInput from './components/QuickInput';
 import { THEME } from './colors';
 
-export default function App() {
+function AuthenticatedApp() {
   const [abaAtiva, setAbaAtiva] = useState(() => {
     return sessionStorage.getItem('taskflow_aba_ativa') || 'hoje';
   });
@@ -18,6 +20,7 @@ export default function App() {
   useEffect(() => {
     sessionStorage.setItem('taskflow_aba_ativa', abaAtiva);
   }, [abaAtiva]);
+
   const {
     tarefas,
     toggleConcluir,
@@ -58,9 +61,8 @@ export default function App() {
       </header>
 
       <main
-        className={`flex-1 max-w-md lg:max-w-6xl xl:max-w-7xl w-full mx-auto px-4 pt-3 pb-16 flex flex-col min-h-0 ${
-          abaAtiva === 'hoje' || abaAtiva === 'fila' || abaAtiva === 'notas' || abaAtiva === 'manual' ? 'overflow-hidden' : 'overflow-y-auto'
-        }`}
+        className={`flex-1 max-w-md lg:max-w-6xl xl:max-w-7xl w-full mx-auto px-4 pt-3 pb-16 flex flex-col min-h-0 ${abaAtiva === 'hoje' || abaAtiva === 'fila' || abaAtiva === 'notas' || abaAtiva === 'manual' ? 'overflow-hidden' : 'overflow-y-auto'
+          }`}
       >
         {abaAtiva === 'hoje' && (
           <TodayView
@@ -111,4 +113,33 @@ export default function App() {
       <BottomNav abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
     </div>
   );
+}
+
+export default function App() {
+  const [sessao, setSessao] = useState(null);
+  const [carregandoSessao, setCarregandoSessao] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSessao(session);
+      setCarregandoSessao(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSessao(session);
+      setCarregandoSessao(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (carregandoSessao) {
+    return <div className={`h-dvh ${THEME.app.bg}`} />;
+  }
+
+  if (!sessao) {
+    return <LoginView />;
+  }
+
+  return <AuthenticatedApp />;
 }

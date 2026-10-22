@@ -32,6 +32,7 @@ Snapshot técnico gerado automaticamente com a estrutura e código da plataforma
 ./src/utils/tree.js
 ./src/views/ContextsView.jsx
 ./src/views/GlobalQueueView.jsx
+./src/views/LoginView.jsx
 ./src/views/ManualView.jsx
 ./src/views/NotesView.jsx
 ./src/views/TodayView.jsx
@@ -363,6 +364,7 @@ If you are developing a production application, we recommend using TypeScript wi
 
 ### 📄 ARQUIVO: ./src/App.jsx
 import React, { useState, useEffect } from 'react';
+import { supabase } from './services/supabase';
 import { useTasks } from './useTasks';
 import { useNotes } from './useNotes';
 import TodayView from './views/TodayView';
@@ -370,11 +372,12 @@ import GlobalQueueView from './views/GlobalQueueView';
 import ContextsView from './views/ContextsView';
 import NotesView from './views/NotesView';
 import ManualView from './views/ManualView';
+import LoginView from './views/LoginView';
 import BottomNav from './components/BottomNav';
 import QuickInput from './components/QuickInput';
 import { THEME } from './colors';
 
-export default function App() {
+function AuthenticatedApp() {
   const [abaAtiva, setAbaAtiva] = useState(() => {
     return sessionStorage.getItem('taskflow_aba_ativa') || 'hoje';
   });
@@ -382,6 +385,7 @@ export default function App() {
   useEffect(() => {
     sessionStorage.setItem('taskflow_aba_ativa', abaAtiva);
   }, [abaAtiva]);
+
   const {
     tarefas,
     toggleConcluir,
@@ -422,9 +426,8 @@ export default function App() {
       </header>
 
       <main
-        className={`flex-1 max-w-md lg:max-w-6xl xl:max-w-7xl w-full mx-auto px-4 pt-3 pb-16 flex flex-col min-h-0 ${
-          abaAtiva === 'hoje' || abaAtiva === 'fila' || abaAtiva === 'notas' || abaAtiva === 'manual' ? 'overflow-hidden' : 'overflow-y-auto'
-        }`}
+        className={`flex-1 max-w-md lg:max-w-6xl xl:max-w-7xl w-full mx-auto px-4 pt-3 pb-16 flex flex-col min-h-0 ${abaAtiva === 'hoje' || abaAtiva === 'fila' || abaAtiva === 'notas' || abaAtiva === 'manual' ? 'overflow-hidden' : 'overflow-y-auto'
+          }`}
       >
         {abaAtiva === 'hoje' && (
           <TodayView
@@ -477,6 +480,34 @@ export default function App() {
   );
 }
 
+export default function App() {
+  const [sessao, setSessao] = useState(null);
+  const [carregandoSessao, setCarregandoSessao] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSessao(session);
+      setCarregandoSessao(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSessao(session);
+      setCarregandoSessao(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (carregandoSessao) {
+    return <div className={`h-dvh ${THEME.app.bg}`} />;
+  }
+
+  if (!sessao) {
+    return <LoginView />;
+  }
+
+  return <AuthenticatedApp />;
+}
 
 ### 📄 ARQUIVO: ./src/colors.js
 export const THEME = {
@@ -771,7 +802,8 @@ body {
 }
 
 /* Permitir seleção de texto apenas em campos editáveis e notas */
-input, textarea {
+input,
+textarea {
   user-select: text;
 }
 
@@ -779,6 +811,7 @@ input, textarea {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -816,8 +849,8 @@ export async function buscarEventosHoje() {
 ### 📄 ARQUIVO: ./src/services/supabase.js
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_URL = 'https://xttzilpuuqjbztjkeadd.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dHppbHB1dXFqYnp0amtlYWRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3NDM1NDAsImV4cCI6MjEwNDMxOTU0MH0.JChW7np_UAGozYm_jaBS44dBKA9y3gX0Lj2SVdosxUY';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -1045,7 +1078,12 @@ export function useTasks() {
   const [tarefas, setTarefas] = useState(() => {
     try {
       const salvas = localStorage.getItem(STORAGE_KEY);
-      return salvas ? JSON.parse(salvas) : DADOS_INICIAIS;
+      if (!salvas) return DADOS_INICIAIS;
+      const parsed = JSON.parse(salvas);
+      // Sanitização: descarta dados legados de agenda do cache local para re-sincronização limpa
+      return Array.isArray(parsed)
+        ? parsed.filter((t) => !String(t.id).startsWith('gcal-'))
+        : DADOS_INICIAIS;
     } catch {
       return DADOS_INICIAIS;
     }
@@ -1122,40 +1160,52 @@ export function useTasks() {
     setSincronizandoAgenda(true);
     try {
       const eventos = await buscarEventosHoje();
-      if (eventos.length > 0) {
-        setTarefas((prev) => {
-          const idsExistentes = new Set(prev.map((t) => t.id));
+      if (!Array.isArray(eventos) || eventos.length === 0) return;
 
-          const novosItens = eventos
-            .filter((ev) => !idsExistentes.has(`gcal-${ev.id}`))
-            .map((ev) => ({
-              id: `gcal-${ev.id}`,
-              titulo: ev.titulo,
-              icone: 'Clock',
-              contexto: 'agenda',
-              tipo: TIPOS_TAREFA.AGENDADO,
-              horario: ev.horario,
-              cadencia: null,
-              proximaData: null,
-              prioridade: PRIORIDADES.P1,
-              ordemFila: 0,
-              concluido: false,
-              concluidoEm: null,
-            }));
+      // 1. Gera IDs compostos e elimina duplicatas de horário no mesmo lote
+      const mapaNovos = new Map();
+      for (const ev of eventos) {
+        if (!ev || !ev.titulo) continue;
 
-          if (novosItens.length > 0) {
-            (async () => {
-              try {
-                await supabase.from('tarefas').upsert(novosItens);
-              } catch (e) {
-                console.error('Falha ao subir eventos para o Supabase:', e);
-              }
-            })();
-          }
+        const sufixoHorario = (ev.horario || 'diatodo').replace(/[^a-zA-Z0-9]/g, '');
+        const idUnico = `gcal-${ev.id || 'evento'}-${sufixoHorario}`;
 
-          return [...novosItens, ...prev];
-        });
+        if (!mapaNovos.has(idUnico)) {
+          mapaNovos.set(idUnico, {
+            id: idUnico,
+            titulo: ev.titulo,
+            icone: 'Clock',
+            contexto: 'agenda',
+            tipo: TIPOS_TAREFA.AGENDADO,
+            horario: ev.horario || null,
+            cadencia: null,
+            proximaData: null,
+            prioridade: PRIORIDADES.P1,
+            ordemFila: 0,
+            concluido: false,
+            concluidoEm: null,
+          });
+        }
       }
+
+      const novosItens = Array.from(mapaNovos.values());
+
+      // 2. Grava de forma segura no Supabase com chaves únicas garantidas
+      if (novosItens.length > 0) {
+        const { error } = await supabase.from('tarefas').upsert(novosItens);
+        if (error) {
+          console.error('Falha ao subir eventos para o Supabase:', error);
+        }
+      }
+
+      // 3. Atualiza a interface local sem sobrescrever ou duplicar
+      setTarefas((prev) => {
+        const idsExistentes = new Set(prev.map((t) => t.id));
+        const itensParaAdicionar = novosItens.filter((t) => !idsExistentes.has(t.id));
+        return itensParaAdicionar.length > 0 ? [...itensParaAdicionar, ...prev] : prev;
+      });
+    } catch (err) {
+      console.error('Erro na sincronização da agenda:', err);
     } finally {
       setSincronizandoAgenda(false);
     }
@@ -1224,16 +1274,16 @@ export function useTasks() {
 
       const novaCadencia = itemAtual.cadencia
         ? {
-            ...itemAtual.cadencia,
-            intervaloDias: intervalo,
-            dataInicio: novaDataInicio,
-            dataLimite: novaDataLimite,
-          }
+          ...itemAtual.cadencia,
+          intervaloDias: intervalo,
+          dataInicio: novaDataInicio,
+          dataLimite: novaDataLimite,
+        }
         : {
-            intervaloDias: intervalo,
-            dataInicio: novaDataInicio,
-            dataLimite: novaDataLimite,
-          };
+          intervaloDias: intervalo,
+          dataInicio: novaDataInicio,
+          dataLimite: novaDataLimite,
+        };
 
       atualizacao = {
         concluido: false,
@@ -1556,7 +1606,6 @@ export function useTasks() {
     adicionarTarefa,
   };
 }
-
 
 ### 📄 ARQUIVO: ./src/utils/parser.js
 import { TIPOS_TAREFA, PRIORIDADES } from '../types.js';
@@ -2067,6 +2116,21 @@ import { THEME } from '../colors';
 
 const PASTAS_STORAGE_KEY = 'taskflow_pastas_abertas_v1';
 
+function ordenarTarefasContexto(lista, ehAgenda) {
+  return [...lista].sort((a, b) => {
+    if (ehAgenda) {
+      if (!a.horario && b.horario) return -1;
+      if (a.horario && !b.horario) return 1;
+      if (a.horario && b.horario) {
+        const comp = (a.horario || '').localeCompare(b.horario || '');
+        if (comp !== 0) return comp;
+      }
+    }
+    return (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR');
+  });
+}
+
+
 function CardTarefaContexto({
   tarefa,
   editandoId,
@@ -2273,9 +2337,8 @@ function NoPastaMobile({
     a.nome.localeCompare(b.nome)
   );
 
-  const tarefasOrdenadas = [...no.tarefas].sort((a, b) =>
-    (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR')
-  );
+  const ehAgendaNo = no.caminhoCompleto === 'agenda' || no.caminhoCompleto.startsWith('agenda/');
+  const tarefasOrdenadas = ordenarTarefasContexto(no.tarefas, ehAgendaNo);
 
   return (
     <div className="space-y-1">
@@ -2578,12 +2641,14 @@ export default function ContextsView({
     });
   };
 
-  const tarefasDoContextoDesktop = tarefasAtivas
-    .filter((t) => {
+  const ehAgendaDesktop = caminhoSelecionado === 'agenda' || caminhoSelecionado.startsWith('agenda/');
+  const tarefasDoContextoDesktop = ordenarTarefasContexto(
+    tarefasAtivas.filter((t) => {
       const ctx = (t.contexto || 'geral').toLowerCase().trim();
       return ctx === caminhoSelecionado || ctx.startsWith(`${caminhoSelecionado}/`);
-    })
-    .sort((a, b) => (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR'));
+    }),
+    ehAgendaDesktop
+  );
 
   const handleCriarItemDesktop = (e) => {
     e.preventDefault();
@@ -3284,6 +3349,126 @@ export default function GlobalQueueView({
       </div>
     </div>
   );
+}
+
+### 📄 ARQUIVO: ./src/views/LoginView.jsx
+import React, { useState } from 'react';
+import { Lock, EnvelopeSimple, CircleNotch, SignIn } from '@phosphor-icons/react';
+import { supabase } from '../services/supabase';
+import { THEME } from '../colors';
+
+export default function LoginView() {
+    const [email, setEmail] = useState('');
+    const [senha, setSenha] = useState('');
+    const [carregando, setCarregando] = useState(false);
+    const [erro, setErro] = useState('');
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!email.trim() || !senha.trim()) return;
+
+        setCarregando(true);
+        setErro('');
+
+        try {
+            const { error } = await supabase.auth.signInWithPassword({
+                email: email.trim(),
+                password: senha,
+            });
+
+            if (error) {
+                if (error.message.includes('Invalid login credentials')) {
+                    setErro('E-mail ou senha incorretos.');
+                } else {
+                    setErro(error.message || 'Falha ao autenticar.');
+                }
+            }
+        } catch (err) {
+            setErro('Erro de conexão com o servidor.');
+        } finally {
+            setCarregando(false);
+        }
+    };
+
+    return (
+        <div className={`h-dvh flex items-center justify-center p-4 font-sans ${THEME.app.bg} ${THEME.app.text}`}>
+            <div className="w-full max-w-sm p-6 rounded-2xl border border-zinc-200 bg-white shadow-sm space-y-5">
+                <div className="text-center space-y-1">
+                    <div className="inline-flex p-2.5 rounded-xl bg-zinc-100 text-zinc-800 mb-1">
+                        <Lock size={22} weight="bold" />
+                    </div>
+                    <h1 className="text-base font-bold text-zinc-900 tracking-tight">
+                        Acesso Restrito • TaskFlow
+                    </h1>
+                    <p className="text-xs text-zinc-500">
+                        Inicie sessão para sincronizar suas tarefas
+                    </p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-3.5">
+                    <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-zinc-600 uppercase tracking-wider block">
+                            E-mail
+                        </label>
+                        <div className="relative flex items-center">
+                            <EnvelopeSimple size={16} className="absolute left-3 text-zinc-400" />
+                            <input
+                                type="email"
+                                autoFocus
+                                required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="seu@email.com"
+                                className="w-full pl-9 pr-3 py-2 rounded-xl text-xs bg-zinc-50 border border-zinc-200 text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-500 transition-colors"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-zinc-600 uppercase tracking-wider block">
+                            Senha
+                        </label>
+                        <div className="relative flex items-center">
+                            <Lock size={16} className="absolute left-3 text-zinc-400" />
+                            <input
+                                type="password"
+                                required
+                                value={senha}
+                                onChange={(e) => setSenha(e.target.value)}
+                                placeholder="••••••••"
+                                className="w-full pl-9 pr-3 py-2 rounded-xl text-xs bg-zinc-50 border border-zinc-200 text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-500 transition-colors"
+                            />
+                        </div>
+                    </div>
+
+                    {erro && (
+                        <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs text-center font-medium">
+                            {erro}
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={carregando || !email.trim() || !senha.trim()}
+                        className="w-full py-2.5 rounded-xl bg-zinc-900 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-sm hover:bg-zinc-800 disabled:opacity-40 transition-colors cursor-pointer"
+                    >
+                        {carregando ? (
+                            <CircleNotch size={15} className="animate-spin" />
+                        ) : (
+                            <>
+                                <SignIn size={15} weight="bold" />
+                                <span>Entrar no TaskFlow</span>
+                            </>
+                        )}
+                    </button>
+                </form>
+
+                <p className="text-[10px] text-zinc-400 text-center leading-relaxed">
+                    Sessão persistente: suas credenciais ficarão salvas neste dispositivo para acesso automático.
+                </p>
+            </div>
+        </div>
+    );
 }
 
 ### 📄 ARQUIVO: ./src/views/ManualView.jsx
@@ -4449,11 +4634,12 @@ O **TaskFlow** é um Progressive Web App (PWA) de gerenciamento de tarefas minim
 
 ---
 
-## 2. Ambiente de Desenvolvimento
+## 2. Ambiente de Desenvolvimento e Regras de Atendimento
 - **Ambiente Operacional:** Windows.
 - **Terminal Padrão:** Git Bash integrado ao VSCode.
 - **Diretriz para IAs:** Todos os comandos de terminal sugeridos devem ser estritamente compatíveis com a sintaxe do Git Bash / Bash no ambiente Windows.
-- **Sempre proibido inferir, ao receber instruções pelas prompts precisa saber como está e como tem que ser antes de realizar qualquer alteração. 
+- **Proibição Estrita de Inferência:** É estritamente proibido inferir. Ao receber instruções, a IA precisa entender exatamente **como está** e **como tem que ser** antes de sugerir ou executar qualquer alteração.
+- **Regra de Renderização do Arquivo Master:** Sempre que enviar o `TASKFLOW_MASTER.md` no chat, a IA DEVE envelopar o conteúdo usando delimitadores de 4 crases (````markdown ... ````) e enviar o arquivo 100% integral. Jamais truncar, omitir trechos ou permitir que blocos internos fechem o código antes do fim. O usuário deve conseguir copiar o arquivo completo com um único clique.
 
 ---
 
@@ -4462,14 +4648,15 @@ Esta seção documenta as dependências que residem fora do repositório local e
 
 ### A. Backend as a Service (Supabase)
 - **Instância:** Projeto configurado no cliente via `@supabase/supabase-js`.
-- **Tabela Principal:** `public.tarefas`
+- **Autenticação & Sessão:** Controle de acesso exclusivo via Supabase Auth (`LoginView.jsx`), com persistência automática de sessão criptografada no `localStorage` do navegador para inicialização direta e transparente nos dispositivos autorizados.
+- **Tabela Principal:** `public.tarefas` com Row Level Security (RLS) estritamente ativado e política de permissão restrita a conexões autenticadas (`auth.role() = 'authenticated'`). Bloqueio público contra requisições não autorizadas.
   - Campos: `id` (PK, string), `titulo` (string), `icone` (string), `contexto` (string), `tipo` (string), `horario` (string/null), `cadencia` (jsonb/null), `proximaData` (string/null), `prioridade` (string), `ordemFila` (integer), `concluido` (boolean), `concluidoEm` (string/null).
 - **Canal Realtime:** Canal WebSocket ativo sob o nome `tarefas-realtime`, escutando eventos de `INSERT`, `UPDATE` e `DELETE` na tabela `tarefas` para manter múltiplos clientes sincronizados em tempo real.
 - **Estratégia Offline-First:** O app salva localmente as tarefas em cache (`localStorage: taskflow_tarefas_v1`). Em caso de banco remoto vazio ou falha temporária de rede, o sistema realiza auto-recuperação através de um `upsert` em lote dos dados locais para a nuvem.
 
 ### B. Integração Google Calendar
 - **Comunicação:** Requisição HTTP direta a um endpoint customizado hospedado no **Google Apps Script**.
-- **Comportamento:** O script externo consulta a agenda do usuário e retorna os eventos do dia. No TaskFlow, esses itens são incorporados com o prefixo `gcal-` em seus identificadores.
+- **Comportamento e Deduplicação:** O script externo consulta a agenda do usuário e retorna os eventos do dia. Para impedir colisões no Supabase (`ON CONFLICT`) causadas por eventos recorrentes ou múltiplos eventos sob o mesmo ID de série do Google Calendar, o TaskFlow gera identificadores determinísticos compostos no formato `gcal-${ev.id}-${horarioLimpo}` e deduplica o lote em memória via `Map` antes de persistir no banco ou no Virtual DOM.
 
 ### C. Módulo de Notas
 - **Persistência Exclusiva Local:** O bloco de anotações opera de forma isolada, persistindo seus registros estritamente no dispositivo (`localStorage: taskflow_notas_v1`). Esses dados não trafegam nem são gravados no banco de dados do Supabase.
@@ -4502,8 +4689,8 @@ echo "Concluído! Arquivo $OUTPUT pronto para leitura."
 **Ação Obrigatória:** Antes de dar como finalizado qualquer atendimento que altere a arquitetura, estrutura ou escopo da plataforma, a IA deve:
 1. Avaliar se as alterações realizadas modificaram integrações externas (Supabase, Google Calendar, etc), dependências estruturais ou fluxos de trabalho descritos neste documento.
 2. Caso identifique divergências, fornecer explicitamente ao usuário a versão revisada e atualizada do `TASKFLOW_MASTER.md`.
-3. Instruir o usuário a gerar uma nova versão do `TASKFLOW_DUMPER.md` caso arquivos tenham sido criados, movidos ou excluídos.
-
+3. **Formatação e Integridade Obrigatórias:** A entrega do `TASKFLOW_MASTER.md` deve ser feita na íntegra (arquivo completo, do início ao fim, sem resumos ou quebras), envelopada estritamente com blocos de 4 crases para que o bloco de código interno da Seção 4 não feche a janela de cópia prematuramente.
+4. Instruir o usuário a gerar uma nova versão do `TASKFLOW_DUMPER.md` caso arquivos tenham sido criados, movidos ou excluídos.
 
 ### 📄 ARQUIVO: ./vite.config.js
 import { defineConfig } from 'vite';
@@ -4511,7 +4698,6 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// https://vite.dev/config/
 export default defineConfig({
   server: {
     watch: {
@@ -4525,10 +4711,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       workbox: {
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // Eleva o limite para 6 MB
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
       },
       devOptions: {
-        enabled: true,
+        enabled: false, // Desativa Service Worker durante desenvolvimento local
       },
       manifest: {
         name: 'TaskFlow',

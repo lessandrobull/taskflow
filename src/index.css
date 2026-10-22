@@ -11,7 +11,8 @@ body {
 }
 
 /* Permitir seleção de texto apenas em campos editáveis e notas */
-input, textarea {
+input,
+textarea {
   user-select: text;
 }
 
@@ -19,6 +20,7 @@ input, textarea {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
